@@ -1,0 +1,17 @@
+model_id: Qwen/Qwen2.5-7B-Instruct
+model_arch: qwen
+quant:
+  backend: gptq
+  abstract_scheme: w4_gptq
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+  gptq:
+    bits: 4
+    group_size: 128
+    sym: true
+    batch_size: 1
+    device: cuda:0
+calib:
+  source: stub
+  max_samples: 128

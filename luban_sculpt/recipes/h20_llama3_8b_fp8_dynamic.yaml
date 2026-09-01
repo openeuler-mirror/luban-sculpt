@@ -1,0 +1,44 @@
+# NVIDIA H20（Hopper）— Meta-Llama-3-8B-Instruct FP8_DYNAMIC
+# 模型：ModelScope LLM-Research/Meta-Llama-3-8B-Instruct
+# 导出 compressed-tensors，供 vLLM CUDA 推理
+#
+# 用法：
+#   luban-sculpt compress --profile nvidia_h20 \
+#     --recipe luban_sculpt/recipes/h20_llama3_8b_fp8_dynamic.yaml \
+#     --output /data/out/h20-llama3-8b-fp8-dynamic
+#
+# 本地已下载时可覆盖：
+#   model_id: /data/models/Meta-Llama-3-8B-Instruct
+
+model_id: LLM-Research/Meta-Llama-3-8B-Instruct
+model_arch: llama
+quant:
+  backend: llm_compressor
+  abstract_scheme: fp8_dynamic
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+  llm_compressor:
+    scheme: FP8_DYNAMIC
+    trust_remote_code: true
+    modifiers:
+      - name: HALCalibHook
+        mode: prepend
+      - name: QuantizationPatch
+        mode: patch
+        ignore:
+          - lm_head
+      - name: LubanProducerMetadataModifier
+        mode: append
+    oneshot: {}
+calib:
+  # 包内默认：luban_sculpt/calib/open-perfectblend
+  source: open-perfectblend
+  # 自定义目录（datasets save_to_disk）时取消注释：
+  # path: /data/calib/open-perfectblend
+  max_samples: 128
+  batch_size: 1
+  shuffle: true
+  seed: 42
+  distributed: false
+  world_size: 1

@@ -1,0 +1,46 @@
+id: generic_cpu
+vendor: unknown
+topology_default: unknown
+match_keys: []
+capability:
+  fp8_native: false
+required_ops_probe: []
+hw_defaults:
+  calib_fusion: generic
+  fp8_encoding: ieee_e4m3_ref
+  weight_layout: ct_pack
+  comm_backend: nccl
+backends:
+  llm_compressor:
+    enabled: true
+  awq:
+    enabled: true
+  gptq:
+    enabled: true
+schemes:
+  fp8_dynamic:
+    compress:
+      backend: llm_compressor
+      export: compressed-tensors
+    infer:
+      runtime: vllm_cuda
+      kernel_whitelist: [generic]
+  fp8_block:
+    compress:
+      backend: llm_compressor
+      export: compressed-tensors
+    infer:
+      runtime: vllm_cuda
+  w4a16_g32:
+    compress:
+      export: compressed-tensors
+    infer:
+      runtime: vllm_cuda
+  w4_gptq:
+    compress:
+      backend: gptq
+      export: gptq_hf
+    infer:
+      runtime: vllm_cuda
+      extra_args:
+        - --quantization=gptq

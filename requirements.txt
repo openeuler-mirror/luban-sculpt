@@ -1,0 +1,23 @@
+# Runtime
+pyyaml>=6.0
+pydantic>=2.0
+# Intel Mac + torch 2.2.x: keep numpy<2 to avoid torch/numpy ABI noise
+# (GPU Linux with torch>=2.10 can use numpy>=2)
+numpy>=1.26,<2
+
+# Dev / test
+pytest>=7.0
+
+# Optional backends (large / platform-specific; install as needed)
+# vllm: uncomment when the target machine has a matching GPU stack
+# msmodelslim: Ascend 环境建议装 CANN + torch-npu 后再装
+#
+# llmcompressor needs torch>=2.10 (no wheels on Intel Mac). Prefer:
+#   bash tools/install_llm_compressor.sh
+# or on GPU Linux: pip install -e ./llm-compressor
+# llmcompressor
+transformers
+gptqmodel
+datasets
+msmodelslim
+# vllm

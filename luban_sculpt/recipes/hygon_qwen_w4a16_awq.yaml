@@ -1,0 +1,16 @@
+model_id: /data/models/Qwen2.5-7B-Instruct
+model_arch: qwen
+quant:
+  backend: awq
+  abstract_scheme: hygon_w4a16_awq
+  deploy_target: vllm_rocm
+  ignore:
+    - lm_head
+  awq:
+    trust_remote_code: true
+calib:
+  source: pileval
+  max_samples: 128
+  seq_len: 512
+  split: validation
+  text_column: text

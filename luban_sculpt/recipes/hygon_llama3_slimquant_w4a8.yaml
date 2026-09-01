@@ -1,0 +1,18 @@
+# Hygon DCU + hygon backend → enginex-hygon-vllm slimquant_w4a8
+model_id: /data/models/Meta-Llama-3-8B-Instruct
+model_arch: llama
+quant:
+  backend: hygon
+  abstract_scheme: slimquant_w4a8
+  deploy_target: vllm_rocm
+  ignore:
+    - lm_head
+  hygon:
+    trust_remote_code: true
+calib:
+  source: open-perfectblend
+  # path: /data/calib/open-perfectblend
+  max_samples: 512
+  batch_size: 1
+  shuffle: true
+  seed: 42

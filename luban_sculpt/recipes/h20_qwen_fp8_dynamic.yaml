@@ -1,0 +1,25 @@
+# NVIDIA H20（Hopper）— llm-compressor FP8_DYNAMIC → vLLM compressed-tensors
+model_id: Qwen/Qwen2.5-7B-Instruct
+model_arch: qwen
+quant:
+  backend: llm_compressor
+  abstract_scheme: fp8_dynamic
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+  llm_compressor:
+    scheme: FP8_DYNAMIC
+    trust_remote_code: true
+    modifiers:
+      - name: HALCalibHook
+        mode: prepend
+    oneshot:
+      # 可选：带校准的 PTQ/GPTQ 类算法时打开 dataset
+      # dataset: open_platypus
+      # num_calibration_samples: 512
+calib:
+  source: stub
+  max_samples: 128
+  batch_size: 1
+  distributed: false
+  world_size: 1
