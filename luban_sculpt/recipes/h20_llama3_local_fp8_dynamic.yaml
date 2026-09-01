@@ -1,0 +1,38 @@
+# H20 — 本地目录量化（保留 FP8 路径；W4A16 见 h20_llama3_local_w4a16.yaml）
+#   bash example/llm_compressor/h20/run_local_llama3_fp8.sh
+#
+# 或：
+#   luban-sculpt compress --profile nvidia_h20 \
+#     --recipe luban_sculpt/recipes/h20_llama3_local_fp8_dynamic.yaml \
+#     --output ./out-h20-llama3-fp8-dynamic
+
+model_id: ./llama3
+model_arch: llama
+quant:
+  backend: llm_compressor
+  abstract_scheme: fp8_dynamic
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+  llm_compressor:
+    scheme: FP8_DYNAMIC
+    trust_remote_code: true
+    modifiers:
+      - name: HALCalibHook
+        mode: prepend
+      - name: QuantizationPatch
+        mode: patch
+        ignore:
+          - lm_head
+      - name: LubanProducerMetadataModifier
+        mode: append
+    oneshot: {}
+calib:
+  source: open-perfectblend
+  path: ./open-perfectblend
+  max_samples: 128
+  batch_size: 1
+  shuffle: true
+  seed: 42
+  distributed: false
+  world_size: 1

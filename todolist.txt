@@ -1,0 +1,57 @@
+# luban-sculpt todolist
+# 更新：2026-08-26
+# 说明：[x]=已完成  [ ]=待办  [~]=进行中
+
+## 今日 / 近期收口（HAE · profiles）
+
+[x] profiles 路径改为 importlib.resources（hae/engine.py）
+[x] 加载侧参数：load_profile_template(name)
+[x] 选择侧统一 profile_name（HAE / Pipeline / chips / compile_plan）
+[x] 契约层保留 profile_id（HwDecision / manifest）
+[x] profiles/README.md：说明目录职责与 recipes 分工
+[ ] 同步文档中的旧命名（详细设计/概要设计/architecture：resolve_profile_id → resolve_profile_name，QuantPipeline(profile_id=) → profile_name）
+[ ] 评估是否将 profiles 对外改称 targets（CLI --target / 目录更名）；暂维持 profiles，文档写清「芯片能力模板」
+
+## 设计文档（对齐 M1 · ~9.10）
+
+[ ] 技术选型调研报告收口
+[ ] 概要设计正式化（含 Backend↔Compiler 协议章节）
+[ ] 详细设计：compress 时序图、异常/dry-run、性能指标
+[ ] Quant IR 初稿（Dense / MoE）
+[ ] 测试框架选型说明（pytest + 比对策略）
+
+## 基础底座（9.11–10.5 · 冲向 M2）
+
+[ ] P0：Ignore 方言解析 + lmslim/gptq/msmodelslim Adapter；MoE 不支持路径 fail-fast
+[ ] Compiler Pass 调度器骨架（compiler/passes/）
+[ ] HAE LUT 查询 API（在 profiles 之上：算子/精度/带宽档）
+[ ] 导出完善：manifest 校验、quantization_config 回写、vLLM 启动提示
+[ ] lmslim 增强：Ignore Adapter、内存/设备通信与 Sourcefind wheel 契约
+[ ] Quant IR 基础类 + 与 ModelArch/ArchQuantPolicy 映射
+[ ] M2 空转验收：导入 → IR → Backend 分配 → dry-run + manifest
+
+## DeepSeek 海光（10.6–11.2 · M3）
+
+[ ] calib/ 替换 stub：KL / MinMax，对接 lmslim GPTQ 校准样本
+[ ] deepseek_moe：router / eh_proj / shared expert Ignore → lmslim exclude 可验收
+[ ] HAL 海光实装（hygon_ue8m0、row_major_align_256）与 hygon_dcu profile 对账
+[ ] Policy Pass-Lite（ignore 合并、MoE calib 放大、lmslim algo）
+[ ] 精度门禁：PPL / smoke gen，挂 QuantPipeline 后置阶段
+[ ] 约定规模 DCU lmslim 实跑 + 精度损失 <1% 报告
+
+## Qwen3 海光（11.3–11.30 · M4）及之后
+
+[ ] Qwen3 校准 V2 / GQA 适配 / 独立 ModelArch（如需）
+[ ] 海光导出格式（.hgemm 或确认格式）
+[ ] KV Cache 量化 Pass + 性能对比
+[ ] 12 月：端到端集成、Dense/MoE/GQA 对比、压测、调优指南、终验打包
+
+## 备忘
+
+- 契约字段 profile_id 与选择侧 profile_name 不要混改
+- 新芯片：profiles/<name>.yaml + HAE resolve_profile_name / SoC 映射
+- 排期细节见 docs/schedule_2026.md
+
+
+# 1. 添加继承modifier的自己实现
+# 2. 

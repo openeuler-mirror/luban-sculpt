@@ -1,0 +1,23 @@
+model_id: meta-llama/Llama-3.1-8B-Instruct
+model_arch: llama
+quant:
+  backend: llm_compressor
+  abstract_scheme: fp8_dynamic
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+  llm_compressor:
+    scheme: FP8_DYNAMIC
+    modifiers:
+      - name: HALCalibHook
+        mode: prepend
+      - name: QuantizationPatch
+        mode: patch
+        ignore:
+          - lm_head
+      - name: LubanProducerMetadataModifier
+        mode: append
+calib:
+  source: stub
+  max_samples: 128
+  batch_size: 4

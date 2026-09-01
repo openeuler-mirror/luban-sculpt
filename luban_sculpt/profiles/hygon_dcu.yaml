@@ -1,0 +1,92 @@
+id: hygon_dcu
+vendor: hygon
+topology_default: pcie_switch
+match_keys:
+  - dcu
+capability:
+  fp8_native: false
+required_ops_probe:
+  - hipblas_gemm_epilogue
+hw_defaults:
+  calib_fusion: simt_split_epilogue
+  fp8_encoding: hygon_ue8m0
+  weight_layout: row_major_align_256
+  comm_backend: rccl
+backends:
+  llm_compressor:
+    enabled: true
+  hygon:
+    enabled: true
+  awq:
+    enabled: true
+  gptq:
+    enabled: true
+schemes:
+  fp8_dynamic:
+    compress:
+      export: compressed-tensors
+    infer:
+      runtime: vllm_rocm
+      kernel_whitelist:
+        - hipblas_gemm_epilogue
+  w4a16_awq:
+    compress:
+      backend: awq
+      export: awq_hf
+    infer:
+      runtime: vllm_rocm
+      extra_args:
+        - --quantization=awq
+  hygon_w4a16_awq:
+    compress:
+      backend: awq
+      export: awq_hf
+    infer:
+      runtime: vllm_rocm
+      extra_args:
+        - --quantization=awq
+  hygon_w8a8_gptq:
+    compress:
+      backend: gptq
+      export: gptq_hf
+    infer:
+      runtime: vllm_rocm
+      extra_args:
+        - --quantization=gptq
+
+  # enginex-hygon-vllm：走 hygon backend（内部委托 llm-compressor）
+  slimquant_w4a8:
+    compress:
+      backend: hygon
+      export: compressed-tensors
+    infer:
+      runtime: vllm_rocm
+      extra_args:
+        - --quantization=slimquant_w4a8
+  slimquant_w4a8_marlin:
+    compress:
+      backend: hygon
+      export: compressed-tensors
+    infer:
+      runtime: vllm_rocm
+      extra_args:
+        - --quantization=slimquant_w4a8_marlin
+  blockwise_int8:
+    compress:
+      backend: hygon
+      export: compressed-tensors
+    infer:
+      runtime: vllm_rocm
+      extra_args:
+        - --quantization=blockwise_int8
+        - --weight-block-size
+        - "128"
+        - "128"
+  awq_marlin:
+    compress:
+      backend: hygon
+      export: compressed-tensors
+    infer:
+      runtime: vllm_rocm
+      extra_args:
+        - --quantization=awq_marlin

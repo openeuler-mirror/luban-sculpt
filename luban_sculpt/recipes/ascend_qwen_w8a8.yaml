@@ -1,0 +1,20 @@
+model_id: /data/models/Qwen2.5-7B-Instruct
+model_arch: qwen
+quant:
+  backend: msmodelslim
+  abstract_scheme: ascend_w8a8
+  deploy_target: vllm_ascend
+  ignore:
+    - lm_head
+  msmodelslim:
+    model_type: Qwen2.5-7B-Instruct
+    quant_type: w8a8
+    device: npu
+    device_id: [0]
+    trust_remote_code: true
+calib:
+  source: stub
+  max_samples: 64
+  # CalibRunner 会物化 luban_calib.jsonl；V1 默认仍用 lab_calib。
+  # 若要把该文件传给 CLI：quant.msmodelslim.pass_calib_cli: true
+  # 或 quant.msmodelslim.calib_file: /path/to.jsonl（传统 V0 见 traditional_qwen.sh）

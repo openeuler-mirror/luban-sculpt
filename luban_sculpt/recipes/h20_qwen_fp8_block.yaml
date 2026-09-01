@@ -1,0 +1,16 @@
+# NVIDIA H20 — FP8 block（128×128，大模型常用）
+model_id: Qwen/Qwen2.5-7B-Instruct
+model_arch: qwen
+quant:
+  backend: llm_compressor
+  abstract_scheme: fp8_block
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+    - "re:.*mlp.gate$"
+  llm_compressor:
+    scheme: FP8_BLOCK
+    block_size: 128
+    trust_remote_code: true
+calib:
+  source: stub

@@ -1,0 +1,15 @@
+# Virtual env
+.venv/
+venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Packaging / editable install
+*.egg-info/
+luban_sculpt.egg-info/
+dist/
+build/
+*.egg

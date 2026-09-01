@@ -1,0 +1,72 @@
+id: nvidia_h20
+vendor: nvidia
+topology_default: pcie_switch
+match_keys:
+  - h20
+capability:
+  fp8_native: true
+  compute_capability: "9.0"
+  memory_bandwidth_gbps: 4000.0
+  peak_tflops_fp16: 148.0
+gpu:
+  model: NVIDIA H20
+  architecture: Hopper
+required_ops_probe:
+  - cuda_fp8_gemm
+hw_defaults:
+  calib_fusion: simt_split_epilogue
+  fp8_encoding: ieee_e4m3_ref
+  weight_layout: ct_pack
+  comm_backend: nccl
+  tp_split_hint: column
+backends:
+  llm_compressor:
+    enabled: true
+  awq:
+    enabled: true
+  gptq:
+    enabled: true
+schemes:
+  fp8_dynamic:
+    compress:
+      backend: llm_compressor
+      export: compressed-tensors
+      default_scheme: FP8_DYNAMIC
+    infer:
+      deploy_target: vllm_cuda
+      kernel_whitelist:
+        - cutlass_fp8
+        - scaled_mm_fp8
+  fp8_block:
+    compress:
+      backend: llm_compressor
+      export: compressed-tensors
+      default_scheme: FP8_BLOCK
+    infer:
+      deploy_target: vllm_cuda
+  w4a16_g32:
+    compress:
+      backend: llm_compressor
+      export: compressed-tensors
+      default_scheme: W4A16
+    infer:
+      deploy_target: vllm_cuda
+      extra_args:
+        - --quantization=compressed-tensors
+  w4a16:
+    compress:
+      backend: llm_compressor
+      export: compressed-tensors
+      default_scheme: W4A16
+    infer:
+      deploy_target: vllm_cuda
+      extra_args:
+        - --quantization=compressed-tensors
+  w4_gptq:
+    compress:
+      backend: gptq
+      export: gptq_hf
+    infer:
+      deploy_target: vllm_cuda
+      extra_args:
+        - --quantization=gptq

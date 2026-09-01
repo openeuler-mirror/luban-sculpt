@@ -1,0 +1,13 @@
+model_id: Qwen/Qwen3-MoE-Stub
+model_arch: qwen_moe
+quant:
+  backend: llm_compressor
+  abstract_scheme: w4a16_g32
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+    - visual.*
+calib:
+  source: stub
+  max_samples: 256
+  distributed: false

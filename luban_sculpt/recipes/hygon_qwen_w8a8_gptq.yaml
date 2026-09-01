@@ -1,0 +1,21 @@
+model_id: /data/models/Qwen2.5-7B-Instruct
+model_arch: qwen
+quant:
+  backend: gptq
+  abstract_scheme: hygon_w8a8_gptq
+  deploy_target: vllm_rocm
+  ignore:
+    - lm_head
+  gptq:
+    bits: 8
+    group_size: -1
+    sym: true
+    batch_size: 1
+    device: cuda:0
+    trust_remote_code: true
+calib:
+  source: pileval
+  max_samples: 128
+  seq_len: 512
+  split: validation
+  text_column: text

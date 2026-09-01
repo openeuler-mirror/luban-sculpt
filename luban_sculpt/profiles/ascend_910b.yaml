@@ -1,0 +1,54 @@
+id: ascend_910b
+vendor: ascend
+topology_default: hccs_ring
+match_keys:
+  - 910b
+soc_key: "910b"
+display_name: Ascend 910B
+capability:
+  fp8_native: false
+  peak_tflops_fp16: 360.0
+msmodelslim:
+  allowed_quant_types:
+    - w8a8
+    - w4a8
+    - w8a16
+  default_quant_type: w8a8
+  default_abstract_scheme: ascend_w8a8
+  notes: vLLM-Ascend 已支持 W4A8/W8A8 等 msModelSlim 导出权重。
+required_ops_probe:
+  - npu_fused_matmul_scale
+hw_defaults:
+  calib_fusion: cube_fused_matmul_scale
+  fp8_encoding: ascend_block_bf16_path
+  weight_layout: fractal_nz
+  comm_backend: hccl
+  tp_split_hint: column
+backends:
+  msmodelslim:
+    enabled: true
+schemes:
+  ascend_w8a8:
+    compress:
+      backend: msmodelslim
+      export: vllm_ascend
+      default_quant_type: w8a8
+    infer:
+      deploy_target: vllm_ascend
+      extra_args:
+        - --quantization=ascend
+      kernel_whitelist:
+        - npu_fused_matmul_scale
+  ascend_w4a8:
+    compress:
+      backend: msmodelslim
+      export: vllm_ascend
+      default_quant_type: w4a8
+    infer:
+      deploy_target: vllm_ascend
+  ascend_export:
+    compress:
+      backend: msmodelslim
+      export: vllm_ascend
+    infer:
+      deploy_target: vllm_ascend

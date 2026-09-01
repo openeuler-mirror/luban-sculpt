@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "luban-sculpt"
+version = "0.1.0"
+description = "Hardware-aware domestic LLM quantization CLI (HAE + HAL + multi-backend)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+llmcompressor = ["llmcompressor", "transformers"]
+vllm = ["vllm"]
+msmodelslim = ["msmodelslim"]
+gptqmodel = ["gptqmodel", "datasets"]
+
+[project.scripts]
+luban-sculpt = "luban_sculpt.cli:main"
+
+[project.entry-points."luban_sculpt.backends"]
+llm_compressor = "luban_sculpt.backends.llm_compressor:LLMCompressorBackend"
+hygon = "luban_sculpt.backends.hygon:HygonBackend"
+msmodelslim = "luban_sculpt.backends.msmodelslim:MsModelSlimBackend"
+awq = "luban_sculpt.backends.awq:AWQBackend"
+gptq = "luban_sculpt.backends.gptq:GPTQBackend"
+# infera = "luban_sculpt.backends.infera:InferaBackend"  # optional; enable when module exists
+custom = "luban_sculpt.backends.custom:CustomCompressorBackend"
+
+# Optional third-party modifiers: add under [project.entry-points."luban_sculpt.modifiers"]
+# my_mod = "my_pkg.modifiers:MyModifier"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["luban_sculpt*"]
+
+[tool.setuptools.package-data]
+luban_sculpt = ["profiles/*.yaml", "recipes/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

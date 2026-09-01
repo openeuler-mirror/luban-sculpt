@@ -1,0 +1,48 @@
+# H20 — 本地目录 W4A16（GPTQ）：模型 ./llama3，校准 ./open-perfectblend
+#
+# GPTQ「Propagating」阶段极易 OOM/整机假死，默认已极度收紧：
+#   max_samples=64, max_seq_length=512, 整模 cuda:0 + fp16（禁止 CPU offload）
+#
+#   bash example/llm_compressor/h20/run_local_llama3_w4a16.sh
+#   luban-sculpt compress --profile nvidia_h20 \
+#     --recipe luban_sculpt/recipes/h20_llama3_local_w4a16.yaml \
+#     --output ./out-h20-llama3-w4a16
+
+model_id: ./llama3
+model_arch: llama
+quant:
+  backend: llm_compressor
+  abstract_scheme: w4a16_g32
+  deploy_target: vllm_cuda
+  ignore:
+    - lm_head
+  llm_compressor:
+    algorithm: gptq
+    scheme: W4A16
+    block_size: 128
+    dampening_frac: 0.01
+    quantization_format: pack-quantized
+    trust_remote_code: true
+    # 关键：不要用 auto（会卸到 CPU，Propagating 时主机 RAM 爆 → SSH 断）
+    torch_dtype: float16
+    device_map: "cuda:0"
+    pipeline: sequential
+    gptq_max_samples_cap: 64
+    gptq_max_seq_cap: 512
+    modifiers:
+      - name: QuantizationPatch
+        mode: patch
+        ignore:
+          - lm_head
+    oneshot: {}
+calib:
+  source: open-perfectblend
+  path: ./open-perfectblend
+  max_samples: 64
+  max_seq_length: 512
+  max_chars: 2048
+  batch_size: 1
+  shuffle: true
+  seed: 42
+  distributed: false
+  world_size: 1

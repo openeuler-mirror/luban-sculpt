@@ -1,0 +1,34 @@
+# 多阶段编配示例：先 llm_compressor(FP8)，再 gptq(W4)
+# 第二阶段 input_from: previous → 以上一阶段 output 作为 model_id
+#
+# 注意：真实串接依赖各 backend 能读入上阶段产物；当前骨架用于验证编配与目录结构。
+# CI / 无卡环境请设 LUBAN_LLM_COMPRESSOR_DRY_RUN=1 LUBAN_GPTQMODEL_DRY_RUN=1
+
+model_id: meta-llama/Llama-3.1-8B-Instruct
+model_arch: llama
+
+calib:
+  source: stub
+  max_samples: 64
+
+pipeline:
+  stages:
+    - name: fp8_prep
+      backend: llm_compressor
+      abstract_scheme: fp8_dynamic
+      deploy_target: vllm_cuda
+      ignore: [lm_head]
+      backend_options:
+        scheme: FP8_DYNAMIC
+      output_subdir: stage1_fp8
+
+    - name: gptq_w4
+      backend: gptq
+      algorithm: gptq
+      abstract_scheme: w4_gptq
+      deploy_target: vllm_cuda
+      input_from: previous
+      output_subdir: stage2_gptq
+      backend_options:
+        bits: 4
+        group_size: 128
