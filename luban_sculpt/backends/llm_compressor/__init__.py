@@ -1,3 +1,8 @@
+"""llm-compressor backend：oneshot 执行 + scheme 映射。
+
+Modifier 链编排见 ``luban_sculpt.modifiers``。
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,7 +17,9 @@ logger = get_logger(__name__)
 
 __all__ = [
     "LLMCompressorBackend",
+    "ModifierManager",
     "ModifierInterceptor",
+    "LLMCompressorModifierManager",
     "build_recipe_for_plan",
     "list_modifier_names",
     "run_llm_compressor_oneshot",
@@ -46,19 +53,26 @@ class LLMCompressorBackend(QuantBackend):
 
 
 def __getattr__(name: str) -> Any:
-    """Lazy re-exports so entry_point load does not import llmcompressor."""
-    if name == "ModifierInterceptor":
-        from luban_sculpt.backends.llm_compressor.interceptor import ModifierInterceptor
+    """Lazy re-exports so entry_point load does not import llmcompressor。"""
+    if name in (
+        "ModifierInterceptor",
+        "ModifierManager",
+        "LLMCompressorModifierManager",
+    ):
+        from luban_sculpt.modifiers.recipe import (
+            LLMCompressorModifierManager,
+            ModifierInterceptor,
+        )
 
-        return ModifierInterceptor
+        if name == "LLMCompressorModifierManager":
+            return LLMCompressorModifierManager
+        return ModifierInterceptor if name == "ModifierInterceptor" else LLMCompressorModifierManager
     if name == "build_recipe_for_plan":
-        from luban_sculpt.backends.llm_compressor.recipe import build_recipe_for_plan
+        from luban_sculpt.modifiers.recipe import build_recipe_for_plan
 
         return build_recipe_for_plan
     if name == "list_modifier_names":
-        from luban_sculpt.backends.llm_compressor.modifier_registry import (
-            list_modifier_names,
-        )
+        from luban_sculpt.modifiers.registry import list_modifier_names
 
         return list_modifier_names
     if name == "run_llm_compressor_oneshot":
@@ -66,7 +80,7 @@ def __getattr__(name: str) -> Any:
 
         return run_llm_compressor_oneshot
     if name == "is_llmcompressor_available":
-        from luban_sculpt.backends.llm_compressor._lc_import import (
+        from luban_sculpt.backends.llm_compressor.probe import (
             is_llmcompressor_available,
         )
 

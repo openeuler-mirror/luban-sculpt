@@ -1,4 +1,4 @@
-"""Optional llmcompressor import — quiet, cached (Intel Mac / old torch may fail)."""
+"""Optional llmcompressor probe — quiet, cached (Intel Mac / old torch may fail)."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def ensure_lc_modifier_classes() -> dict[str, Any]:
     Modifier = state["Modifier"]
     State = state["State"]
     Event = state["Event"]
-    log = logging.getLogger("luban_sculpt.backends.llm_compressor.modifiers")
+    log = logging.getLogger("luban_sculpt.modifiers.builtins")
 
     class LubanHALCalibModifier(Modifier):
         """校准开始/结束时写入 HAL 选中的 kernel（挂到 state.metadata）。"""

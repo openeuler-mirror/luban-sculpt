@@ -9,10 +9,13 @@
 ```
 Recipe YAML
   → build_base_modifiers()     # QuantizationModifier(scheme=FP8_DYNAMIC, ...)
-  → ModifierInterceptor.apply() # 国产 Modifier：prepend / append / wrap / replace
+  → ModifierManager.apply()    # 国产 Modifier：prepend / append / wrap / replace
   → oneshot(model, recipe)
   → save_pretrained + manifest
 ```
+
+核心实现见 `luban_sculpt/modifiers/`（`ModifierManager` + `ChainModifier`）。
+本 backend 目录仅保留 oneshot runner / scheme_map / LC import。
 
 ## Recipe 示例
 
@@ -22,6 +25,9 @@ quant:
   abstract_scheme: fp8_dynamic
   llm_compressor:
     scheme: FP8_DYNAMIC
+    # oneshot(pipeline=...)：顺序加载、逐层量化（降峰值内存）
+    # GPTQ 未写时默认 sequential；也可写在 oneshot.pipeline
+    pipeline: sequential
     modifiers:
       - name: HALCalibHook
         mode: prepend

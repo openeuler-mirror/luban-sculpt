@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from luban_sculpt.backends.llm_compressor._lc_import import probe_llmcompressor
+from luban_sculpt.backends.llm_compressor.probe import probe_llmcompressor
 from luban_sculpt.backends.llm_compressor.scheme_map import resolve_compress_spec
 from luban_sculpt.contracts import BackendPlan
 from luban_sculpt.log import get_logger
