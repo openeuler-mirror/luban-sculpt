@@ -1,13 +1,22 @@
-"""Modifier 注册：entry_points + 本目录 builtins。"""
+"""Modifier 注册：entry_points + builtins。"""
 
 from __future__ import annotations
 
 from importlib.metadata import entry_points
 from typing import Any, Type
 
-from luban_sculpt.backends.llm_compressor.modifiers import BUILTIN_LC_MODIFIERS
-
 ModifierClass = Type[Any]
+
+_BUILTIN: dict[str, ModifierClass] | None = None
+
+
+def _builtins() -> dict[str, ModifierClass]:
+    global _BUILTIN
+    if _BUILTIN is None:
+        from luban_sculpt.modifiers.builtins import BUILTIN_MODIFIERS
+
+        _BUILTIN = BUILTIN_MODIFIERS
+    return _BUILTIN
 
 
 def discover_modifier_classes() -> dict[str, ModifierClass]:
@@ -25,9 +34,9 @@ def resolve_modifier_class(name: str) -> ModifierClass | None:
     discovered = discover_modifier_classes()
     if name in discovered:
         return discovered[name]
-    return BUILTIN_LC_MODIFIERS.get(name)
+    return _builtins().get(name)
 
 
 def list_modifier_names() -> list[str]:
-    names = set(BUILTIN_LC_MODIFIERS) | set(discover_modifier_classes())
+    names = set(_builtins()) | set(discover_modifier_classes())
     return sorted(names)

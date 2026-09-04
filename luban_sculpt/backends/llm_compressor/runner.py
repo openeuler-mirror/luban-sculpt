@@ -12,8 +12,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from luban_sculpt.backends.llm_compressor._lc_import import is_llmcompressor_available
-from luban_sculpt.backends.llm_compressor.recipe import build_recipe_for_plan
+from luban_sculpt.backends.llm_compressor.probe import is_llmcompressor_available
+from luban_sculpt.modifiers.recipe import build_recipe_for_plan
 from luban_sculpt.backends.llm_compressor.scheme_map import resolve_compress_spec
 from luban_sculpt.calib import CalibRunner
 from luban_sculpt.contracts import BackendPlan
@@ -39,9 +39,16 @@ def _oneshot_kwargs(
     calib: CalibRunner | None = None,
     data: Any | None = None,
 ) -> dict[str, Any]:
-    """合并 recipe calib（经 CalibRunner）与 llm_compressor.oneshot 配置。"""
+    """合并 recipe calib（经 CalibRunner）与 llm_compressor.oneshot 配置。
+
+    支持 ``llm_compressor.pipeline`` / ``llm_compressor.oneshot.pipeline``
+    （如 ``sequential``：顺序加载、逐层量化）。
+    """
     lc = _lc_opts(plan)
     oneshot_cfg = dict(lc.get("oneshot") or {})
+    # 顶层 pipeline 与 oneshot.pipeline 等价；oneshot 内显式值优先
+    if "pipeline" not in oneshot_cfg and lc.get("pipeline") is not None:
+        oneshot_cfg["pipeline"] = lc["pipeline"]
     runner = calib or CalibRunner(plan)
     for key, value in runner.oneshot_kwargs(data).items():
         oneshot_cfg.setdefault(key, value)
@@ -74,32 +81,47 @@ def _log_cuda_mem(prefix: str) -> None:
         logger.debug("cuda mem log skip: %s", exc)
 
 
+def _oneshot_supports_pipeline(oneshot_fn: Any) -> bool:
+    import inspect
+
+    try:
+        return "pipeline" in inspect.signature(oneshot_fn).parameters
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _maybe_sequential_pipeline(
     oneshot_fn: Any,
     oneshot_kwargs: dict[str, Any],
     lc_opts: dict[str, Any],
     is_gptq: bool,
 ) -> dict[str, Any]:
-    """若 oneshot 支持 pipeline=sequential，GPTQ 默认开启以降 Propagating 峰值。"""
-    import inspect
+    """注入 oneshot(pipeline=...)。
 
+    优先级：
+    1. 已有 ``oneshot_kwargs["pipeline"]``（来自 YAML oneshot / 顶层 pipeline）
+    2. GPTQ 默认 ``sequential``（降 Propagating 峰值）
+    3. 显式 ``pipeline: false`` / ``null`` 关闭
+    """
     out = dict(oneshot_kwargs)
     if "pipeline" in out:
+        want = out["pipeline"]
+    else:
+        want = lc_opts.get("pipeline")
+        if want is None and is_gptq:
+            want = "sequential"
+
+    if want in (None, False, ""):
+        out.pop("pipeline", None)
         return out
-    want = lc_opts.get("pipeline")
-    if want is None and is_gptq:
-        want = "sequential"
-    if not want:
+
+    if not _oneshot_supports_pipeline(oneshot_fn):
+        logger.info("oneshot 无 pipeline 参数，跳过 pipeline=%s", want)
+        out.pop("pipeline", None)
         return out
-    try:
-        sig = inspect.signature(oneshot_fn)
-        if "pipeline" in sig.parameters:
-            out["pipeline"] = want
-            logger.info("oneshot pipeline=%s", want)
-        else:
-            logger.info("oneshot 无 pipeline 参数，跳过 sequential")
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("pipeline probe failed: %s", exc)
+
+    out["pipeline"] = want
+    logger.info("oneshot pipeline=%s", want)
     return out
 
 
@@ -156,6 +178,11 @@ def run_llm_compressor_oneshot(
             json.dumps(_recipe_to_jsonable(recipe), indent=2),
             encoding="utf-8",
         )
+        lc_opts = _lc_opts(plan)
+        pipe = lc_opts.get("pipeline")
+        if pipe is None and spec.algorithm == "gptq":
+            pipe = "sequential"
+        meta["oneshot_pipeline"] = pipe if pipe not in (False, "") else None
         meta["status"] = "dry_run"
         return meta
 
@@ -244,15 +271,17 @@ def run_llm_compressor_oneshot(
     calib_data.samples = []
     calib_data.texts = []
 
-    # oneshot 若支持 sequential pipeline，优先开启（逐层量化，降峰值内存）
+    # oneshot(pipeline=sequential)：顺序加载、逐层量化，降峰值内存
     oneshot_kwargs = _maybe_sequential_pipeline(oneshot, oneshot_kwargs, lc_opts, is_gptq)
+    meta["oneshot_pipeline"] = oneshot_kwargs.get("pipeline")
 
     ds = oneshot_kwargs.get("dataset")
     _log_cuda_mem("[3/4] before oneshot")
     logger.info(
-        "[3/4] oneshot start keys=%s num_calibration_samples=%s max_seq_length=%s "
-        "dataset_type=%s recipe=%s",
+        "[3/4] oneshot start keys=%s pipeline=%s num_calibration_samples=%s "
+        "max_seq_length=%s dataset_type=%s recipe=%s",
         list(oneshot_kwargs.keys()),
+        oneshot_kwargs.get("pipeline"),
         oneshot_kwargs.get("num_calibration_samples"),
         oneshot_kwargs.get("max_seq_length"),
         type(ds).__name__ if ds is not None else None,
@@ -344,6 +373,14 @@ def _render_oneshot_script(
     ignore = plan.intent.ignore or ["lm_head"]
     save_kw = _save_kwargs(spec)
     save_kw_repr = ", ".join(f"{k}={v!r}" for k, v in save_kw.items())
+    lc = _lc_opts(plan)
+    pipeline = lc.get("pipeline")
+    if pipeline is None and spec.algorithm == "gptq":
+        pipeline = "sequential"
+    if pipeline in (None, False, ""):
+        oneshot_call = "oneshot(model=model, recipe=recipe)"
+    else:
+        oneshot_call = f"oneshot(model=model, recipe=recipe, pipeline={pipeline!r})"
 
     if spec.algorithm == "gptq":
         block = f", block_size={spec.block_size}" if spec.block_size else ""
@@ -388,7 +425,7 @@ if tokenizer.pad_token is None:
 
 {recipe_src}
 
-oneshot(model=model, recipe=recipe)
+{oneshot_call}
 model.save_pretrained(SAVE_DIR, {save_kw_repr})
 tokenizer.save_pretrained(SAVE_DIR)
 '''

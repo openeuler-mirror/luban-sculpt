@@ -13,20 +13,20 @@ logger = get_logger(__name__)
 
 
 def run_pre_oneshot(plan: BackendPlan) -> Any:
-    """oneshot 前：构建 ModifierInterceptor 并记录 modifier 链。"""
+    """oneshot 前：构建 LLMCompressorModifierManager 并记录 modifier 链。"""
     logger.info(
         "pre_oneshot backend=%s scheme=%s profile=%s",
         plan.intent.backend,
         plan.intent.abstract_scheme,
         plan.hw.profile_id,
     )
-    from luban_sculpt.backends.llm_compressor.interceptor import ModifierInterceptor
+    from luban_sculpt.modifiers.recipe import LLMCompressorModifierManager
 
-    interceptor = ModifierInterceptor(plan)
-    specs = interceptor.specs_from_plan()
+    manager = LLMCompressorModifierManager(plan)
+    specs = manager.specs_from_plan()
     if specs:
         logger.info("modifier chain: %s", [s.get("name") for s in specs])
-    return interceptor
+    return manager
 
 
 def run_post_oneshot(plan: BackendPlan, output_dir: Path) -> None:
