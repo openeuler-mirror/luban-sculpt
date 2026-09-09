@@ -1,7 +1,11 @@
 """Invoke MindStudio msModelSlim CLI (``msmodelslim quant``).
 
 Reference: https://github.com/Ascend/msmodelslim
-Quick start: ``msmodelslim quant --model_path ... --save_path ... --quant_type w8a8``
+
+CLI (current):
+  msmodelslim quant --model_path ... --save_path ...
+    [--model_type ...] [--device npu|npu:0,1,...] [--config_path ...]
+    [--quant_type w8a8] [--trust_remote_code True|False] [--debug] [--tag ...]
 """
 
 from __future__ import annotations
@@ -9,6 +13,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -67,12 +72,33 @@ def resolve_soc_key(plan: BackendPlan) -> str:
     return "910b"
 
 
+def resolve_device(opts: dict[str, Any]) -> str:
+    """Build ``--device`` value: ``npu`` / ``cpu`` / ``npu:0,1,2,3``.
+
+    Recipe may set ``device: npu:0,1`` directly, or ``device: npu`` + ``device_id: [0, 1]``.
+    """
+    device = str(opts.get("device", "npu")).strip() or "npu"
+    if ":" in device:
+        return device
+    device_ids = opts.get("device_id")
+    if device_ids is None:
+        return device
+    if isinstance(device_ids, (list, tuple)):
+        ids = ",".join(str(x) for x in device_ids)
+    else:
+        ids = str(device_ids).replace(" ", ",")
+    if not ids:
+        return device
+    return f"{device}:{ids}"
+
+
 def build_quant_argv(
     plan: BackendPlan,
     output_dir: Path,
     *,
     calib_file: Path | None = None,
 ) -> list[str]:
+    del calib_file  # CalibRunner still materializes jsonl; V1 CLI has no --calib_file
     opts = plan.intent.backend_options or {}
     quant_type = resolve_quant_type(plan)
     chip = get_chip(resolve_soc_key(plan))
@@ -96,8 +122,9 @@ def build_quant_argv(
         plan.intent.arch_snapshot.arch.value,
     )
 
-    device = opts.get("device", "npu")
+    device = resolve_device(opts)
     trust = opts.get("trust_remote_code", True)
+    config_path = opts.get("config_path") or opts.get("config")
 
     argv = [
         msmodelslim_cli(),
@@ -107,26 +134,30 @@ def build_quant_argv(
         "--save_path",
         str(save_path),
         "--device",
-        str(device),
+        device,
         "--model_type",
         str(model_type),
-        "--quant_type",
-        quant_type,
         "--trust_remote_code",
         "True" if trust else "False",
     ]
 
-    device_ids = opts.get("device_id")
-    if device_ids is not None:
-        if isinstance(device_ids, (list, tuple)):
-            argv.extend(["--device_id", *[str(x) for x in device_ids]])
-        else:
-            argv.extend(["--device_id", str(device_ids)])
+    # --config_path 与 --quant_type 互斥；有显式配置时不再传 quant_type
+    if config_path:
+        argv.extend(["--config_path", str(config_path)])
+    else:
+        argv.extend(["--quant_type", quant_type])
 
-    # V1 一键量化默认用 lab_calib；显式 calib_file / pass_calib_cli 时注入（V0/forks）
-    pass_cli = bool(opts.get("pass_calib_cli") or opts.get("calib_file"))
-    if pass_cli and calib_file is not None:
-        argv.extend(["--calib_file", str(calib_file)])
+    if opts.get("debug"):
+        argv.append("--debug")
+
+    tags = opts.get("tag") or opts.get("tags")
+    if tags:
+        if isinstance(tags, str):
+            tag_list = [tags]
+        else:
+            tag_list = [str(t) for t in tags]
+        if tag_list:
+            argv.extend(["--tag", *tag_list])
 
     extra_args = opts.get("extra_cli") or []
     if isinstance(extra_args, list):
@@ -144,8 +175,7 @@ def run_msmodelslim_quant(
     """调用 ``msmodelslim quant``；CLI 缺失或 LUBAN_MSMODELSLIM_DRY_RUN 时只写 argv 元数据。
 
     校准经共享 ``CalibRunner``：写入 ``calib_report``，并物化 ``luban_calib.jsonl``。
-    V1 CLI 默认内置 lab 校准；设 ``quant.msmodelslim.calib_file`` 或
-    ``pass_calib_cli: true`` 时再把路径传给 ``--calib_file``。
+    当前 msModelSlim V1 CLI 无 ``--calib_file``，校准由 lab_practice / ``--config_path`` 配置。
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     opts = plan.intent.backend_options or {}
@@ -200,19 +230,62 @@ def run_msmodelslim_quant(
         return meta
 
     logger.info("Running: %s", " ".join(argv))
-    proc = subprocess.run(argv, capture_output=True, text=True)
-    meta["status"] = "ok" if proc.returncode == 0 else "failed"
-    meta["returncode"] = proc.returncode
-    if proc.stdout:
-        (output_dir / "msmodelslim_stdout.log").write_text(proc.stdout, encoding="utf-8")
-    if proc.stderr:
-        (output_dir / "msmodelslim_stderr.log").write_text(proc.stderr, encoding="utf-8")
-    if proc.returncode != 0:
+    stdout_path = output_dir / "msmodelslim_stdout.log"
+    stderr_path = output_dir / "msmodelslim_stderr.log"
+    returncode = _run_streaming(argv, stdout_path=stdout_path, stderr_path=stderr_path)
+    meta["status"] = "ok" if returncode == 0 else "failed"
+    meta["returncode"] = returncode
+    meta["stdout_log"] = str(stdout_path)
+    meta["stderr_log"] = str(stderr_path)
+    if returncode != 0:
         raise RuntimeError(
-            f"msmodelslim quant failed (code {proc.returncode}); "
-            f"see {output_dir}/msmodelslim_stderr.log"
+            f"msmodelslim quant failed (code {returncode}); "
+            f"see {stderr_path}"
         )
     return meta
+
+
+def _run_streaming(
+    argv: list[str],
+    *,
+    stdout_path: Path,
+    stderr_path: Path,
+) -> int:
+    """Run CLI; tee stdout/stderr line-by-line to logger and log files."""
+    proc = subprocess.Popen(
+        argv,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+    assert proc.stdout is not None and proc.stderr is not None
+
+    def _tee(pipe, path: Path, *, is_stderr: bool) -> None:
+        with path.open("w", encoding="utf-8") as fh:
+            for line in pipe:
+                fh.write(line)
+                fh.flush()
+                msg = line.rstrip("\n")
+                if is_stderr:
+                    logger.warning("[msmodelslim:stderr] %s", msg)
+                else:
+                    logger.info("[msmodelslim] %s", msg)
+
+    threads = [
+        threading.Thread(
+            target=_tee, args=(proc.stdout, stdout_path), kwargs={"is_stderr": False}, daemon=True
+        ),
+        threading.Thread(
+            target=_tee, args=(proc.stderr, stderr_path), kwargs={"is_stderr": True}, daemon=True
+        ),
+    ]
+    for t in threads:
+        t.start()
+    returncode = proc.wait()
+    for t in threads:
+        t.join()
+    return int(returncode)
 
 
 def _shell_quote(s: str) -> str:

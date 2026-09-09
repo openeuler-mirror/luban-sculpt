@@ -9,12 +9,19 @@ quant:
   msmodelslim:
     model_type: Qwen2.5-7B-Instruct
     quant_type: w8a8
+    # --device 两种写法（效果相同）:
+    #   1) device: npu:0,1,2,3
+    #   2) device: npu
+    #      device_id: [0, 1, 2, 3]   # 合成 --device npu:0,1,2,3
+    # 单卡默认: device: npu  （或 npu:0）
     device: npu
-    device_id: [0]
+    # device_id: [0, 1, 2, 3]
     trust_remote_code: true
+    # config_path: /path/to/quant.yaml   # 与 quant_type 互斥
+    # tag: [vllm]                        # 可选场景标签
+    # debug: true
 calib:
   source: stub
   max_samples: 64
-  # CalibRunner 会物化 luban_calib.jsonl；V1 默认仍用 lab_calib。
-  # 若要把该文件传给 CLI：quant.msmodelslim.pass_calib_cli: true
-  # 或 quant.msmodelslim.calib_file: /path/to.jsonl（传统 V0 见 traditional_qwen.sh）
+  # CalibRunner 会物化 luban_calib.jsonl；V1 CLI 无 --calib_file，校准走 lab_practice / config_path。
+  # 传统 V0 脚本见 example/msmodelslim/traditional_qwen.sh

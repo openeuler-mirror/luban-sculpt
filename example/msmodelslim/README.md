@@ -12,6 +12,7 @@
 
 ```bash
 export LUBAN_ASCEND_SOC=910b
+# 选卡：环境变量，或 CLI --device npu:0 / npu:0,1,2,3
 export ASCEND_RT_VISIBLE_DEVICES=0
 ```
 
