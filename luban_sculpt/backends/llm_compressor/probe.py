@@ -26,7 +26,7 @@ def probe_llmcompressor() -> dict[str, Any]:
                 from llmcompressor.core.state import State
                 from llmcompressor.modifiers import Modifier
                 from llmcompressor.modifiers.quantization import QuantizationModifier
-
+                import luban_sculpt.observers  
                 _STATE = {
                     "available": True,
                     "oneshot": oneshot,
