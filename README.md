@@ -252,7 +252,7 @@ calib:
 |----------|------|------|
 | `stub` | 代码生成 | `datasets.py` 内存造最多 8 条 `"calib stub sample {i}"`，无磁盘文件；多数 recipe 默认，便于 dry-run |
 | HF 数据集 id（如 `pileval`、`wikitext`、`allenai/c4`） | HuggingFace `datasets.load_dataset(source, split=...)` | 需安装 `datasets` 且网络/缓存可用；失败则打日志并**回退 stub** |
-| 本地 `.jsonl` 路径 | 见下 | `CalibRunner.resolve_calib_file` 可直接引用；`load()` 目前仍按 HF id 尝试，失败回退 stub。msmodelslim 可设 `quant.msmodelslim.calib_file` / `pass_calib_cli` 把路径传给 CLI |
+| 本地 `.jsonl` 路径 | 见下 | `CalibRunner.resolve_calib_file` 可直接引用；`load()` 目前仍按 HF id 尝试，失败回退 stub。msmodelslim V1 CLI 无 `--calib_file`，校准走 lab_practice / `config_path` |
 
 常用键：`source` / `max_samples` / `split` / `text_column` / `batch_size`。  
 `pileval` 是量化圈常用的 Pile 验证子集**短名**（海光 AWQ/GPTQ recipe 示例）；若 HF 上该短名不可用，请改成真实 id（如 `mit-han-lab/pile-val-backup`）或本地文件。  
