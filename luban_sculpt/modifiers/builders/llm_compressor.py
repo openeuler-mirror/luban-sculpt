@@ -19,6 +19,48 @@ _GPTQ_OPTIONAL_KEYS = (
     "offload_hessians",
     "sequential_update",
 )
+_OBSERVER_OPTIONAL_KEYS = (
+    "weight_observer",
+    "input_observer",
+    "output_observer",
+)
+
+
+def _extract_observer_overrides(lc: dict[str, Any]) -> dict[str, Any]:
+    """提取 llm-compressor QuantizationModifier 的 Observer 参数。
+
+    支持两种互斥写法：
+
+    1. observer:
+         weights: xxx
+         input: xxx
+
+    2. weight_observer / input_observer / output_observer
+    """
+    observer = lc.get("observer")
+
+    individual = {
+        key: lc[key]
+        for key in _OBSERVER_OPTIONAL_KEYS
+        if lc.get(key) is not None
+    }
+
+    if observer is not None and individual:
+        raise ValueError(
+            "不能同时配置 `observer` 字典和 "
+            "`weight_observer/input_observer/output_observer`"
+        )
+
+    if observer is not None:
+        if not isinstance(observer, dict):
+            raise TypeError(
+                "`llm_compressor.observer` 必须是字典，例如："
+                "{'weights': 'luban_ema_absmax'}"
+            )
+        return {"observer": dict(observer)}
+
+    return individual
+
 
 
 def build_base_modifiers(plan: BackendPlan) -> list[Any]:
@@ -40,12 +82,14 @@ def _stub_modifiers(
     spec: Any, targets: Any, ignore: list[str], lc: dict[str, Any]
 ) -> list[Any]:
     """无 llmcompressor 时的 JSON 可序列化 stub（dry-run）。"""
+    observer_overrides = _extract_observer_overrides(lc)
     if spec.algorithm == "gptq":
         body: dict[str, Any] = {
             "targets": targets,
             "scheme": spec.scheme,
             "ignore": ignore,
         }
+        body.update(observer_overrides)
         if spec.block_size is not None:
             body["block_size"] = spec.block_size
         for key in _GPTQ_OPTIONAL_KEYS:
@@ -53,19 +97,34 @@ def _stub_modifiers(
                 body[key] = lc[key]
         return [{"GPTQModifier": body}]
     if spec.algorithm == "awq":
+        quant_body: dict[str, Any] = {
+            "targets": targets,
+            "scheme": spec.scheme,
+            "ignore": ignore,
+        }
+        quant_body.update(observer_overrides)
+
         return [
-            {"AWQModifier": {"duo_scaling": True}},
             {
-                "QuantizationModifier": {
-                    "targets": targets,
-                    "scheme": spec.scheme,
-                    "ignore": ignore,
+                "AWQModifier": {
+                    "duo_scaling": True,
                 }
             },
+            {
+                "QuantizationModifier": quant_body,
+            },
         ]
-    body = {"targets": targets, "scheme": spec.scheme, "ignore": ignore}
+
+    body: dict[str, Any] = {
+        "targets": targets,
+        "scheme": spec.scheme,
+        "ignore": ignore,
+    }
+    body.update(observer_overrides)
+
     if spec.block_size is not None:
         body["block_size"] = spec.block_size
+
     return [{"QuantizationModifier": body}]
 
 
@@ -90,6 +149,7 @@ def _live_modifiers(
     lc: dict[str, Any],
 ) -> list[Any]:
     QuantizationModifier = state["QuantizationModifier"]
+    observer_overrides = _extract_observer_overrides(lc)
     if spec.algorithm == "gptq":
         GPTQModifier = _import_gptq()
         kwargs: dict[str, Any] = {
@@ -97,6 +157,7 @@ def _live_modifiers(
             "scheme": spec.scheme,
             "ignore": ignore,
         }
+        kwargs.update(observer_overrides)
         if spec.block_size is not None:
             kwargs["block_size"] = spec.block_size
         # 默认 dampening，减轻数值/内存尖峰
@@ -114,17 +175,35 @@ def _live_modifiers(
         return [GPTQModifier(**filtered)]
     if spec.algorithm == "awq":
         AWQModifier = _import_awq()
+        quant_kwargs: dict[str, Any] = {
+            "targets": targets,
+            "scheme": spec.scheme,
+            "ignore": ignore,
+        }
+        quant_kwargs.update(observer_overrides)
+
         return [
             AWQModifier(duo_scaling=True),
-            QuantizationModifier(
-                targets=targets,
-                scheme=spec.scheme,
-                ignore=ignore,
-            ),
+            QuantizationModifier(**quant_kwargs),
         ]
-    kwargs = {"targets": targets, "scheme": spec.scheme, "ignore": ignore}
+    kwargs: dict[str, Any] = {
+        "targets": targets,
+        "scheme": spec.scheme,
+        "ignore": ignore,
+    }
+
+    # 这里是真正把 YAML 中的 Observer 参数传给 QuantizationModifier。
+    kwargs.update(observer_overrides)
+
     if spec.block_size is not None:
         kwargs["block_size"] = spec.block_size
+
+    logger.info(
+        "QuantizationModifier scheme=%s observer_overrides=%s",
+        spec.scheme,
+        observer_overrides,
+    )
+
     return [QuantizationModifier(**kwargs)]
 
 
