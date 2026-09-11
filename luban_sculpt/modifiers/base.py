@@ -73,8 +73,12 @@ class ChainModifier:
                     mod.ignore = spec["ignore"]
                 elif plan.intent.ignore:
                     mod.ignore = list(plan.intent.ignore)
-                if spec.get("block_size") is not None:
-                    mod.block_size = spec["block_size"]
+                # block_size 仅 GPTQModifier 等支持；QuantizationModifier 会 pydantic 拒绝
+                if spec.get("block_size") is not None and hasattr(mod, "block_size"):
+                    try:
+                        mod.block_size = spec["block_size"]
+                    except (ValueError, TypeError, AttributeError):
+                        pass
         return modifiers
 
 

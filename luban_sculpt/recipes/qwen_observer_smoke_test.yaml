@@ -1,53 +1,29 @@
 model_id: /home/luban/luban-sculpt/Qwen2.5-0.5B-W8A8-EMA-AbsMax
-
 model_arch: qwen
-
 quant:
-
   backend: llm_compressor
-
   abstract_scheme: fp8_dynamic
-
   deploy_target: vllm_cuda
-
   ignore:
-
     - lm_head
-
   llm_compressor:
-
     algorithm: quantization
-
     # 使用静态 FP8，确保 input Observer 会在 calibration 阶段创建。
     scheme: FP8
-
     targets: Linear
-
     observer:
-
       weights: luban_ema_absmax
-
       input: luban_percentile
-
     # 降低加载内存。
     torch_dtype: float16
-
     device_map: cuda:0
-
     trust_remote_code: true
-
     pipeline: sequential
-
 calib:
-
   # 只为了跑通一次 Observer 调用。
   # 不是正式量化使用的高质量校准数据。
   source: stub
-
   max_samples: 1
-
   batch_size: 1
-
   max_seq_length: 32
-
   shuffle: false
