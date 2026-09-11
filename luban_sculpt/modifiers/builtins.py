@@ -107,11 +107,11 @@ class AscendFp8Block(ChainModifier):
         if not _lc_available():
             return {"stub": self.name, "scheme": "FP8_BLOCK"}
         QuantizationModifier = probe_llmcompressor()["QuantizationModifier"]
+        # FP8_BLOCK scheme 自带 block 语义；QuantizationModifier 不接受 block_size
         return QuantizationModifier(
             targets=spec.get("targets", "Linear"),
             scheme=spec.get("scheme", "FP8_BLOCK"),
             ignore=plan.intent.ignore or ["lm_head"],
-            block_size=spec.get("block_size", 128),
         )
 
 

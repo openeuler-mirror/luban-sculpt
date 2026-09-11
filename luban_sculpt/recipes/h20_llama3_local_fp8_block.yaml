@@ -1,21 +1,20 @@
-# H20 — 本地目录 Llama3 FP8_DYNAMIC：模型 ./llama3，校准 ./open-perfectblend
+# H20 — 本地目录 Llama3 FP8_BLOCK（scheme 内置 128×128；勿传 block_size 给 QuantizationModifier）
 #
-#   bash example/llm_compressor/h20/run_local_llama3_fp8.sh
 #   luban-sculpt compress --profile nvidia_h20 \
-#     --recipe luban_sculpt/recipes/h20_llama3_local_fp8_dynamic.yaml \
-#     --output ./out-h20-llama3-fp8-dynamic
+#     --recipe luban_sculpt/recipes/h20_llama3_local_fp8_block.yaml \
+#     --output ./out-h20-llama3-fp8-block
 
 model_id: ./llama3
 model_arch: llama
 quant:
   backend: llm_compressor
-  abstract_scheme: fp8_dynamic
+  abstract_scheme: fp8_block
   deploy_target: vllm_cuda
   ignore:
     - lm_head
   llm_compressor:
     algorithm: quantization
-    scheme: FP8_DYNAMIC
+    scheme: FP8_BLOCK
     trust_remote_code: true
     # 整模放单卡，避免 auto offload 拖垮主机 RAM
     torch_dtype: float16

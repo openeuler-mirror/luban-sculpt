@@ -121,10 +121,7 @@ def _stub_modifiers(
         "ignore": ignore,
     }
     body.update(observer_overrides)
-
-    if spec.block_size is not None:
-        body["block_size"] = spec.block_size
-
+    # QuantizationModifier 不接受 block_size（仅 GPTQModifier 使用）
     return [{"QuantizationModifier": body}]
 
 
@@ -181,12 +178,12 @@ def _live_modifiers(
             "ignore": ignore,
         }
         quant_kwargs.update(observer_overrides)
-
+        filtered_quant = _filter_kwargs(QuantizationModifier, quant_kwargs)
         return [
             AWQModifier(duo_scaling=True),
-            QuantizationModifier(**quant_kwargs),
+            QuantizationModifier(**filtered_quant),
         ]
-    kwargs: dict[str, Any] = {
+    kwargs = {
         "targets": targets,
         "scheme": spec.scheme,
         "ignore": ignore,
@@ -194,17 +191,23 @@ def _live_modifiers(
 
     # 这里是真正把 YAML 中的 Observer 参数传给 QuantizationModifier。
     kwargs.update(observer_overrides)
-
+    # FP8_BLOCK 等 scheme 自带 block 语义；勿传 block_size（pydantic extra_forbidden）
     if spec.block_size is not None:
-        kwargs["block_size"] = spec.block_size
+        logger.info(
+            "ignore block_size=%s for QuantizationModifier (scheme=%s)",
+            spec.block_size,
+            spec.scheme,
+        )
+    filtered = _filter_kwargs(QuantizationModifier, kwargs)
 
     logger.info(
-        "QuantizationModifier scheme=%s observer_overrides=%s",
+        "QuantizationModifier scheme=%s kwargs=%s observer_overrides=%s",
         spec.scheme,
+        sorted(filtered.keys()),
         observer_overrides,
     )
 
-    return [QuantizationModifier(**kwargs)]
+    return [QuantizationModifier(**filtered)]
 
 
 def _import_gptq() -> Any:
