@@ -49,7 +49,7 @@ def test_quantized_model_validate_stage_missing_config_raises(tmp_path: Path) ->
             model_id="m",
             backend="llm_compressor",
             abstract_scheme="fp8_dynamic",
-            deploy_target="vllm",
+            infer_runtime="vllm",
         ),
         hw=HwDecision(profile_id="generic_cpu"),
         export_format=ExportFormat.COMPRESSED_TENSORS,
@@ -67,7 +67,6 @@ def test_quantized_model_validate_stage_missing_config_raises(tmp_path: Path) ->
     )
     ctx = PipelineContext(
         recipe={"model_id": "m"},
-        recipe_path=None,
         output_dir=tmp_path,
         profile_name="generic_cpu",
         pipeline=PipelineConfig(stages=[stage_cfg]),

@@ -1,25 +1,26 @@
 model_id: /data/models/Qwen2.5-7B-Instruct
 model_arch: qwen
-quant:
-  backend: msmodelslim
-  abstract_scheme: ascend_w8a8
-  deploy_target: vllm_ascend
-  ignore:
-    - lm_head
-  msmodelslim:
-    model_type: Qwen2.5-7B-Instruct
-    quant_type: w8a8
-    # --device 两种写法（效果相同）:
-    #   1) device: npu:0,1,2,3
-    #   2) device: npu
-    #      device_id: [0, 1, 2, 3]   # 合成 --device npu:0,1,2,3
-    # 单卡默认: device: npu  （或 npu:0）
-    device: npu
-    # device_id: [0, 1, 2, 3]
-    trust_remote_code: true
-    # config_path: /path/to/quant.yaml   # 与 quant_type 互斥
-    # tag: [vllm]                        # 可选场景标签
-    # debug: true
+pipeline:
+  stages:
+    - name: default
+      backend: msmodelslim
+      abstract_scheme: ascend_w8a8
+      ignore:
+        - lm_head
+      msmodelslim:
+        model_type: Qwen2.5-7B-Instruct
+        quant_type: w8a8
+        # --device 两种写法（效果相同）:
+        #   1) device: npu:0,1,2,3
+        #   2) device: npu
+        #      device_id: [0, 1, 2, 3]   # 合成 --device npu:0,1,2,3
+        # 单卡默认: device: npu  （或 npu:0）
+        device: npu
+        # device_id: [0, 1, 2, 3]
+        trust_remote_code: true
+        # config_path: /path/to/quant.yaml   # 与 quant_type 互斥
+        # tag: [vllm]                        # 可选场景标签
+        # debug: true
 calib:
   source: stub
   max_samples: 64

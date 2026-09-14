@@ -11,7 +11,7 @@ def build_manifest(plan: BackendPlan, repack_log: list[str]) -> ArtifactManifest
     scheme_cfg = _scheme_from_profile_hint(plan)
     vllm_launch = {
         "quant_method": _vllm_quant_method(plan.export_format),
-        "deploy_target": plan.intent.deploy_target,
+        "infer_runtime": plan.intent.infer_runtime,
         "profile_id": plan.hw.profile_id,
     }
     if plan.export_format == ExportFormat.VLLM_ASCEND or plan.intent.backend == "msmodelslim":

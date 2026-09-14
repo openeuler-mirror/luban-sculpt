@@ -13,3 +13,5 @@ luban_sculpt.egg-info/
 dist/
 build/
 *.egg
+.cursor/
+logs/

@@ -6,26 +6,27 @@
 
 model_id: ./llama3
 model_arch: llama
-quant:
-  backend: llm_compressor
-  abstract_scheme: fp8_block
-  deploy_target: vllm_cuda
-  ignore:
-    - lm_head
-  llm_compressor:
-    algorithm: quantization
-    scheme: FP8_BLOCK
-    trust_remote_code: true
-    # 整模放单卡，避免 auto offload 拖垮主机 RAM
-    torch_dtype: float16
-    device_map: "cuda:0"
-    pipeline: sequential
-    modifiers:
-      - name: QuantizationPatch
-        mode: patch
-        ignore:
-          - lm_head
-    oneshot: {}
+pipeline:
+  stages:
+    - name: default
+      backend: llm_compressor
+      abstract_scheme: fp8_block
+      ignore:
+        - lm_head
+      llm_compressor:
+        algorithm: quantization
+        scheme: FP8_BLOCK
+        trust_remote_code: true
+        # 整模放单卡，避免 auto offload 拖垮主机 RAM
+        torch_dtype: float16
+        device_map: "cuda:0"
+        pipeline: sequential
+        modifiers:
+          - name: QuantizationPatch
+            mode: patch
+            ignore:
+              - lm_head
+        oneshot: {}
 calib:
   source: open-perfectblend
   path: ./open-perfectblend

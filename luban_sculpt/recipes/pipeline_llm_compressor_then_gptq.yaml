@@ -16,7 +16,6 @@ pipeline:
     - name: fp8_prep
       backend: llm_compressor
       abstract_scheme: fp8_dynamic
-      deploy_target: vllm_cuda
       ignore: [lm_head]
       backend_options:
         scheme: FP8_DYNAMIC
@@ -26,7 +25,6 @@ pipeline:
       backend: gptq
       algorithm: gptq
       abstract_scheme: w4_gptq
-      deploy_target: vllm_cuda
       input_from: previous
       output_subdir: stage2_gptq
       backend_options:

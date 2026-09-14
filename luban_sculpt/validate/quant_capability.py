@@ -7,7 +7,7 @@ from typing import Any
 from luban_sculpt.backends.msmodelslim.check import scheme_implies_fp8
 from luban_sculpt.contracts import HwDecision, ProbeResult, QuantIntent
 from luban_sculpt.hae.profile_fields import (
-    infer_expected_deploy,
+    expected_infer_runtime,
     profile_fp8_native,
     profile_soc_key,
 )
@@ -48,7 +48,7 @@ def _resolve_scheme_cfg(
 def validate_intent_profile(
     intent: QuantIntent, hw: HwDecision, profile: dict[str, Any], probe: ProbeResult
 ) -> None:
-    """校验 Intent 与 profile/probe 是否匹配：probe、scheme、backend、deploy。"""
+    """校验 Intent 与 profile/probe 是否匹配：probe、scheme、backend。"""
     if not probe.ok:
         msg = f"Probe failed: {probe.missing_ops}. Set LUBAN_* env or fix stack."
         logger.error(msg)
@@ -67,6 +67,10 @@ def validate_intent_profile(
     # 别名命中时写回，后续 compile / manifest 用 profile 真实 key
     if resolved_name != intent.abstract_scheme:
         intent.abstract_scheme = resolved_name
+        # scheme 变更后同步 infer_runtime
+        runtime = expected_infer_runtime(scheme_cfg)
+        if runtime:
+            intent.infer_runtime = runtime
 
     compress = scheme_cfg.get("compress", {})
     allowed_backend = compress.get("backend")
@@ -90,18 +94,12 @@ def validate_intent_profile(
         logger.error(msg)
         raise QuantCapabilityError(msg)
 
-    deploy = intent.deploy_target
-    expected = infer_expected_deploy(scheme_cfg)
-    if expected and deploy != expected:
-        msg = f"deploy_target {deploy!r} != profile infer deploy {expected!r}"
-        logger.error(msg)
-        raise QuantCapabilityError(msg)
-
+    # infer_runtime 由 compile 从 profile 注入；此处仅记录
     logger.info(
-        "validate_intent_profile passed scheme=%s backend=%s deploy=%s profile=%s",
+        "validate_intent_profile passed scheme=%s backend=%s infer_runtime=%s profile=%s",
         intent.abstract_scheme,
         intent.backend,
-        intent.deploy_target,
+        intent.infer_runtime,
         hw.profile_id,
     )
 

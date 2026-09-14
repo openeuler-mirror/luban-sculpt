@@ -19,7 +19,6 @@ from luban_sculpt.pipeline.config import PipelineConfig, QuantStageConfig
 @dataclass
 class StageResult:
     """单阶段执行结果。"""
-
     stage: QuantStageConfig
     plan: BackendPlan
     artifact: QuantizedArtifact
@@ -31,7 +30,6 @@ class PipelineContext:
     """流水线共享上下文：硬件决策、recipe、各阶段产物。"""
 
     recipe: dict[str, Any]
-    recipe_path: Path | None
     output_dir: Path
     profile_name: str
     pipeline: PipelineConfig

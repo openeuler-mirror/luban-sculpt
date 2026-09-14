@@ -11,9 +11,8 @@ from luban_sculpt.backends.base import BackendRouter
 from luban_sculpt.compiler.recipe_compiler import compile_recipe
 from luban_sculpt.hae.engine import HardwareAwareEngine
 from luban_sculpt.log import get_logger
-from luban_sculpt.pipeline.recipe import build_stage_recipe
+from luban_sculpt.pipeline.config import QuantStageConfig, build_stage_recipe
 from luban_sculpt.pipeline.context import PipelineContext, StageResult
-from luban_sculpt.pipeline.config import QuantStageConfig
 from luban_sculpt.validate.quant_capability import (
     QuantCapabilityError,
     validate_quant_capability,

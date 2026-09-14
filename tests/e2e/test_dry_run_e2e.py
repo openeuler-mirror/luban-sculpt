@@ -214,14 +214,27 @@ def test_e2e_dry_run_multi_stage_pipeline(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_e2e_dry_run_ascend_msmodelslim(tmp_path: Path) -> None:
-    recipe = RECIPES / "ascend_qwen_w8a8.yaml"
-    out = tmp_path / "e2e_ascend"
+@pytest.mark.parametrize(
+    ("recipe_name", "expected_scheme", "expected_quant_type"),
+    [
+        ("ascend_qwen_w8a8.yaml", "ascend_w8a8", "w8a8"),
+        ("ascend_qwen_fp8_dynamic.yaml", "ascend_w8a8", "w8a8"),
+        ("ascend_qwen_fp8_block.yaml", "ascend_w4a8", "w4a8"),
+    ],
+)
+def test_e2e_dry_run_ascend_msmodelslim_recipes(
+    tmp_path: Path,
+    recipe_name: str,
+    expected_scheme: str,
+    expected_quant_type: str,
+) -> None:
+    recipe = RECIPES / recipe_name
+    out = tmp_path / recipe_name.replace(".yaml", "")
     profile = "ascend_910b"
 
     plan = compile_plan(recipe, profile)
     assert plan.intent.backend == "msmodelslim"
-    assert plan.intent.abstract_scheme == "ascend_w8a8"
+    assert plan.intent.abstract_scheme == expected_scheme
     assert plan.export_format == ExportFormat.VLLM_ASCEND
 
     artifact = QuantPipeline(profile_name=profile).run(recipe, out)
@@ -230,6 +243,7 @@ def test_e2e_dry_run_ascend_msmodelslim(tmp_path: Path) -> None:
 
     manifest = _read_json(stage_out / "manifest.json")
     assert manifest["backend"] == "msmodelslim"
+    assert manifest["abstract_scheme"] == expected_scheme
     assert manifest["export_format"] == "vllm_ascend"
     assert manifest["profile_id"] == profile
 
@@ -240,7 +254,9 @@ def test_e2e_dry_run_ascend_msmodelslim(tmp_path: Path) -> None:
 
     cmd = (stage_out / "msmodelslim_command.sh").read_text(encoding="utf-8")
     assert "msmodelslim" in cmd and "quant" in cmd
-    assert "--quant_type" in cmd
+    assert f"--quant_type {expected_quant_type}" in cmd.replace("\n", " ") or (
+        "--quant_type" in cmd and expected_quant_type in cmd
+    )
 
     calib_lines = (
         (stage_out / "luban_calib.jsonl").read_text(encoding="utf-8").strip().splitlines()

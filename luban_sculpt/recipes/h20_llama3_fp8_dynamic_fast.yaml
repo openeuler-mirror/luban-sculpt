@@ -1,9 +1,13 @@
-# H20 — 本地目录 Llama3 FP8_DYNAMIC：模型 ./llama3，校准 ./open-perfectblend
+# H20 — Llama3 FP8_DYNAMIC 快配（牺牲部分校准充分度，缩短 oneshot 时间）
 #
-#   bash example/llm_compressor/h20/run_local_llama3_fp8.sh
+# 相对 h20_llama3_fp8_dynamic.yaml：
+#   - max_samples 128→32，max_seq_length 512→256
+#   - batch_size 1→4（显存不够可改回 1/2）
+#   - 关闭 sequential（整模常驻更快；OOM 时改回 llm_compressor.pipeline: sequential）
+#
 #   luban-sculpt compress --profile nvidia_h20 \
-#     --recipe luban_sculpt/recipes/h20_llama3_fp8_dynamic.yaml \
-#     --output ./out-h20-llama3-fp8-dynamic
+#     --recipe luban_sculpt/recipes/h20_llama3_fp8_dynamic_fast.yaml \
+#     --output ./out-h20-llama3-fp8-dynamic-fast
 
 model_id: ./llama3
 model_arch: llama
@@ -18,10 +22,10 @@ pipeline:
         algorithm: quantization
         scheme: FP8_DYNAMIC
         trust_remote_code: true
-        # 整模放单卡，避免 auto offload 拖垮主机 RAM
         torch_dtype: float16
         device_map: "cuda:0"
-        pipeline: sequential
+        # 快配：不做逐层卸载；大模型 OOM 时改为 sequential
+        pipeline: false
         modifiers:
           - name: QuantizationPatch
             mode: patch
@@ -31,10 +35,10 @@ pipeline:
 calib:
   source: open-perfectblend
   path: ./open-perfectblend
-  max_samples: 128
-  max_seq_length: 512
-  max_chars: 2048
-  batch_size: 1
+  max_samples: 32
+  max_seq_length: 256
+  max_chars: 1024
+  batch_size: 4
   shuffle: true
   seed: 42
   distributed: false

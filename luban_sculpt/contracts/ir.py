@@ -113,12 +113,13 @@ class ProbeResult(BaseModel):
 
 
 class QuantIntent(BaseModel):
-    """Recipe 编译结果：量化意图（算法、部署目标、校准、backend 参数）。"""
+    """Recipe 编译结果：量化意图（算法、推理运行时、校准、backend 参数）。"""
 
     model_id: str
     backend: str
     abstract_scheme: str
-    deploy_target: str
+    infer_runtime: str
+    """目标推理运行时（由 profile.schemes.*.infer 注入，非 recipe 字段）。"""
     arch_snapshot: ModelArchSnapshot = Field(default_factory=ModelArchSnapshot)
     ignore: list[str] = Field(default_factory=list)
     calib: dict[str, Any] = Field(default_factory=dict)

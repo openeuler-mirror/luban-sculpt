@@ -16,13 +16,17 @@ from luban_sculpt.pipeline.config import QuantStageConfig
 from tests.paths import RECIPES
 
 
-def test_parse_single_quant_compat() -> None:
+def test_parse_single_stage_pipeline() -> None:
     recipe = {
         "model_id": "m",
-        "quant": {
-            "backend": "gptq",
-            "abstract_scheme": "hygon_w8a8_gptq",
-            "gptq": {"bits": 8, "group_size": -1},
+        "pipeline": {
+            "stages": [
+                {
+                    "backend": "gptq",
+                    "abstract_scheme": "hygon_w8a8_gptq",
+                    "gptq": {"bits": 8, "group_size": -1},
+                }
+            ]
         },
     }
     spec = parse_pipeline_config(recipe)
@@ -62,7 +66,7 @@ def test_parse_multi_stage_pipeline() -> None:
 def test_build_stage_recipe_injects_algorithm() -> None:
     base = {
         "model_id": "orig",
-        "quant": {"backend": "gptq"},
+        "pipeline": {"stages": [{"backend": "gptq"}]},
         "calib": {"max_samples": 8},
     }
     stage = QuantStageConfig(

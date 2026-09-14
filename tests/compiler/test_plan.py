@@ -64,11 +64,13 @@ def test_all_packaged_recipes_compile_with_matching_profile() -> None:
     """Smoke: every recipe under recipes/ compiles with at least one profile."""
     mapping = {
         "h20_llama3_fp8_dynamic.yaml": "nvidia_h20",
+        "h20_llama3_fp8_dynamic_fast.yaml": "nvidia_h20",
         "h20_llama3_fp8_block.yaml": "nvidia_h20",
         "h20_llama3_8b_fp8_dynamic.yaml": "nvidia_h20",
         "h20_llama3_w4a16.yaml": "nvidia_h20",
         "moe_int4.yaml": "generic_cpu",
         "ascend_qwen_w8a8.yaml": "ascend_910b",
+        "ascend_qwen_fp8_dynamic.yaml": "ascend_910b",
         "ascend_qwen_fp8_block.yaml": "ascend_910b",
         "qwen_observer_smoke_test.yaml": "nvidia_h20",
         "pipeline_llm_compressor_then_gptq.yaml": "nvidia_h20",
