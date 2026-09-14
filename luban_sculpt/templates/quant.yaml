@@ -1,0 +1,26 @@
+# 通用量化模板（由 recipes/* 通过 extends: quant 引用）
+# 勿直接填具体模型；用 model.path / model.arch 在具体 recipe 里覆盖。
+
+model:
+  path: ./model
+  layout: hf_pretrained
+
+pipeline:
+  stages:
+    - name: default
+      backend: auto
+      precision: fp8_dynamic
+      ignore:
+        - lm_head
+      compress:
+        modifiers:
+          - name: QuantizationPatch
+            mode: patch
+
+calib:
+  source: stub
+  max_samples: 128
+  batch_size: 1
+  max_seq_length: 512
+  distributed: false
+  world_size: 1

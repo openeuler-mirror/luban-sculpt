@@ -108,7 +108,7 @@ luban-sculpt ascend-chips
 # 量化（无对应工具时多为 dry-run，写脚本 + manifest）
 luban-sculpt compress \
   --profile generic_cpu \
-  --recipe luban_sculpt/recipes/llama_fp8_dynamic.yaml \
+  --recipe luban_sculpt/recipes/llama3.yaml \
   --output ./out
 
 luban-sculpt validate --model ./out
@@ -147,7 +147,7 @@ pipeline:
       output_subdir: stage2_gptq
 ```
 
-示例 Recipe：`luban_sculpt/recipes/pipeline_llm_compressor_then_gptq.yaml`。  
+多阶段：使用 `recipes/llama3_fp8_then_gptq.yaml`，或 `llama3.yaml` + `--pipeline-preset fp8_then_gptq`。  
 产物目录含各阶段 `manifest.json` 与总览 `pipeline_manifest.json`。
 
 自定义阶段可实现 `PipelineStage.run(ctx)` 并传入 `QuantPipeline(stages=[...])`。
@@ -200,7 +200,7 @@ model/
 ```bash
 export LUBAN_MSMODELSLIM_DRY_RUN=1
 luban-sculpt compress --profile ascend_910b \
-  --recipe luban_sculpt/recipes/ascend_qwen_w8a8.yaml --output ./out
+  --recipe luban_sculpt/recipes/qwen2_5_7b.yaml --precision w8a8 --output ./out
 ```
 
 ### 海光 DCU（LMSlim）
@@ -215,16 +215,15 @@ luban-sculpt compress --profile hygon_dcu \
 
 ## Recipe 一览
 
-| Recipe | Profile | Backend | model_arch |
-|--------|---------|---------|------------|
-| `llama_fp8_dynamic.yaml` | `generic_cpu` | llm_compressor | llama |
-| `h20_qwen_fp8_dynamic.yaml` | `nvidia_h20` | llm_compressor | qwen |
-| `h20_qwen_fp8_block.yaml` | `nvidia_h20` | llm_compressor | qwen |
-| `h20_qwen_gptq_w4.yaml` | `nvidia_h20` | gptq | qwen |
-| `ascend_qwen_w8a8.yaml` | `ascend_910b` | msmodelslim | qwen |
-| `hygon_qwen_w4a16_awq.yaml` | `hygon_dcu` | awq | qwen |
-| `hygon_qwen_w8a8_gptq.yaml` | `hygon_dcu` | gptq | qwen |
-| `moe_int4.yaml` | `generic_cpu` | llm_compressor | qwen_moe |
+通用配方：`backend: auto` + `precision`；同一文件可配合不同 `--profile`。
+
+| 路径 | 模型 | precision | 典型 profile |
+|------|------|-----------|--------------|
+| `templates/quant.yaml` | — | 通用模板（`extends: quant`） | — |
+| `qwen2_5_7b.yaml` | Qwen2.5-7B | `fp8_dynamic` / `fp8_block` / `w8a8`（`--precision`） | auto / H20 / 910B |
+| `llama3.yaml` | Llama 3 | `fp8_dynamic` / `fp8_block` / `w4a16`（`--precision`） | auto / H20 / CPU |
+| `llama3_fp8_then_gptq.yaml` | Llama 3 | 两阶段 FP8 → GPTQ W4 | generic_cpu / H20 |
+| `qwen_observer_smoke.yaml` | Qwen 0.5B | observer 冒烟 | H20 |
 
 最小字段示例：
 

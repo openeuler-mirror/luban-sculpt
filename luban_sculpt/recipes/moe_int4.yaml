@@ -1,0 +1,14 @@
+# MoE 校准放大冒烟（arch qwen_moe → calib_samples_factor 2×）
+extends: quant
+
+model:
+  path: ./Qwen2.5-MoE-7B-Instruct
+  arch: qwen_moe
+  layout: hub_id
+
+calib:
+  source: stub
+  max_samples: 256
+  batch_size: 1
+  distributed: false
+  world_size: 1

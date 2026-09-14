@@ -25,6 +25,7 @@ from luban_sculpt.hae.detect_hw import (
     detect_topology_nvml,
 )
 from luban_sculpt.hae.probe_ops import probe_one_op
+from luban_sculpt.hae.resolve_quant import CompressRoute, suggest_compress_route
 from luban_sculpt.log import get_logger
 
 logger = get_logger(__name__)
@@ -409,3 +410,20 @@ class HardwareAwareEngine:
             decision.fp8_encoding.value,
         )
         return decision, probe, profile
+
+    def suggest_compress_route(
+        self,
+        *,
+        precision: str = "fp8_dynamic",
+        backend_hint: str = "auto",
+        profile: dict[str, Any] | None = None,
+    ) -> CompressRoute:
+        """在 detect/resolve profile 之后，给出精度→scheme→backend 建议（供 CLI/recipe auto 对齐）。"""
+        if profile is None:
+            if not self._capability:
+                self.detect()
+            resolved = self.resolve_profile_name()
+            profile = load_profile_template(resolved)
+        return suggest_compress_route(
+            profile, precision=precision, backend_hint=backend_hint
+        )

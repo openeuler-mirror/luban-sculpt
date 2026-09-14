@@ -67,13 +67,13 @@ CPU 专用说明与 pytest 用例见 **[example/cpu/README.md](../cpu/README.md)
 pip install llmcompressor transformers
 unset LUBAN_LLM_COMPRESSOR_DRY_RUN
 luban-sculpt compress --profile generic_cpu \
-  --recipe luban_sculpt/recipes/llama_fp8_dynamic.yaml \
+  --recipe luban_sculpt/recipes/llama3.yaml \
   --output ./out-fp8-dynamic
 ```
 
 ### NVIDIA H20（Hopper FP8）
 
-见 **[example/llm_compressor/h20/README.md](h20/README.md)**：`nvidia_h20` profile + `h20_qwen_fp8_dynamic.yaml`。
+见 **[example/llm_compressor/h20/README.md](h20/README.md)**：`nvidia_h20` profile + `recipes/qwen2_5_7b.yaml`。
 
 ### NVIDIA H20 + GPTQModel（W4 GPTQ）
 

@@ -22,6 +22,11 @@ hw_defaults:
 backends:
   llm_compressor:
     enabled: true
+    defaults:
+      trust_remote_code: true
+      torch_dtype: float16
+      device_map: "cuda:0"
+      pipeline: sequential
   awq:
     enabled: true
   gptq:

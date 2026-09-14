@@ -19,7 +19,7 @@ unset LUBAN_LLM_COMPRESSOR_DRY_RUN
 luban-sculpt probe --profile nvidia_h20
 luban-sculpt compress \
   --profile nvidia_h20 \
-  --recipe "${ROOT}/luban_sculpt/recipes/h20_qwen_fp8_dynamic.yaml" \
+  --recipe "${ROOT}/luban_sculpt/recipes/qwen2_5_7b.yaml" \
   --output "${OUT}"
 
 echo "manifest:"

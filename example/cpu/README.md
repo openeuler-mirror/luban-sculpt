@@ -5,8 +5,8 @@
 | 项 | 值 |
 |----|-----|
 | Profile | `profiles/generic_cpu.yaml`（默认回退） |
-| 单阶段 Recipe | `recipes/llama_fp8_dynamic.yaml` |
-| 多阶段 Recipe | `recipes/pipeline_llm_compressor_then_gptq.yaml` |
+| 单阶段 Recipe | `recipes/llama3.yaml` |
+| 多阶段 | 同一 `recipes/llama3.yaml` + `--pipeline-preset fp8_then_gptq` |
 | Dry-run 环境变量 | `LUBAN_LLM_COMPRESSOR_DRY_RUN=1`、`LUBAN_GPTQMODEL_DRY_RUN=1` |
 
 ## 一键脚本

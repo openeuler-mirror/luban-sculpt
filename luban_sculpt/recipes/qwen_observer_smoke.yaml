@@ -1,0 +1,24 @@
+# Observer 冒烟：静态 FP8 + Luban observer（仅 llm_compressor 路径）
+
+model_id: Qwen/Qwen2.5-0.5B-Instruct
+model_arch: qwen
+pipeline:
+  stages:
+    - name: default
+      backend: auto
+      precision: fp8_dynamic
+      ignore:
+        - lm_head
+      compress:
+        scheme: FP8
+        targets: Linear
+        observer:
+          weights: luban_ema_absmax
+          input: luban_percentile
+        pipeline: sequential
+calib:
+  source: stub
+  max_samples: 1
+  batch_size: 1
+  max_seq_length: 32
+  shuffle: false

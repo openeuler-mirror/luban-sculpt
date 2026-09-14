@@ -1,0 +1,36 @@
+# Qwen2.5-7B — 三种精度（同一 recipe，改 --precision；--profile auto 跨 H20 / 910B）
+#
+# | 精度 | CLI | H20 (llm_compressor) | Ascend (msmodelslim) |
+# |------|-----|----------------------|----------------------|
+# | FP8 dynamic | --precision fp8_dynamic | fp8_dynamic | ascend_w8a8 (W8A8) |
+# | FP8 block   | --precision fp8_block   | fp8_block   | ascend_w4a8 (W4A8) |
+# | W8A8        | --precision w8a8        | w8a8_fp8    | ascend_w8a8 |
+#
+#   luban-sculpt compress --profile auto \
+#     --recipe luban_sculpt/recipes/qwen2_5_7b.yaml --output ./out-qwen-fp8
+#
+#   luban-sculpt compress ... --precision fp8_block --output ./out-qwen-block
+#   luban-sculpt compress ... --precision w8a8 --output ./out-qwen-w8a8
+#
+# Hub 或本地目录：--model-dir /path/to/Qwen2.5-7B-Instruct
+
+extends: quant
+
+model:
+  path: Qwen/Qwen2.5-7B-Instruct
+  arch: qwen
+  layout: hub_id
+
+pipeline:
+  stages:
+    - compress:
+        observer:
+          weights: luban_ema_absmax
+          input: minmax
+
+calib:
+  source: stub
+  max_samples: 128
+  batch_size: 1
+  distributed: false
+  world_size: 1

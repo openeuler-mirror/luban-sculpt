@@ -16,7 +16,7 @@
 | | recipes | profiles（本目录） |
 |--|---------|-------------------|
 | 回答 | 量化什么模型、用什么方案 | 打到哪块卡、编码/布局/拓扑与可用 scheme |
-| 示例 | `ascend_qwen_w8a8.yaml` | `ascend_910b.yaml` |
+| 示例 | `recipes/qwen2_5_7b.yaml` + `--precision w8a8` | `ascend_910b.yaml` |
 | CLI | `--recipe` | `--profile` |
 
 ## 文件里有什么
@@ -27,5 +27,6 @@
 - **探测**：`required_ops_probe`、非空时的 `stack_gates`
 - **HAL 默认**：`hw_defaults`
 - **编排**：`backends`、`schemes`（compress backend / export；infer 的 `infer_runtime` 或 `runtime` 会在 compile 时写入 Intent/manifest）
+- **compress 默认**：`backends.<name>.defaults`（如 `device_map` / `device`）；通用 recipe 可不写 `llm_compressor:` / `msmodelslim:` 块
 
 本目录只放 YAML 与说明，不含 Python 代码。

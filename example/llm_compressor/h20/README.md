@@ -18,7 +18,7 @@ pip install vllm                    # 推理阶段
 |----|------|
 | 方案 | `FP8_DYNAMIC`（PTQ，激活动态 FP8）或 `FP8_BLOCK`（block 128） |
 | Profile | `luban_sculpt/profiles/nvidia_h20.yaml` |
-| Recipe | `h20_qwen_fp8_dynamic.yaml` / `h20_qwen_fp8_block.yaml` / `h20_llama3_8b_fp8_dynamic.yaml` |
+| Recipe | `recipes/qwen2_5_7b.yaml` / `recipes/llama3.yaml`（`--precision` 选 fp8_dynamic / fp8_block / w4a16 或 w8a8） |
 | 推理 | vLLM 读取 CT 格式，`quant_method: compressed-tensors` |
 
 ## 方式 1：luban-sculpt 编排（含 HAL Modifier 链）
@@ -36,7 +36,7 @@ export OUT=/data/out/h20-qwen-fp8
 luban-sculpt probe --profile nvidia_h20
 luban-sculpt compress \
   --profile nvidia_h20 \
-  --recipe luban_sculpt/recipes/h20_qwen_fp8_dynamic.yaml \
+  --recipe luban_sculpt/recipes/qwen2_5_7b.yaml \
   --output "${OUT}"
 ```
 
@@ -45,7 +45,7 @@ luban-sculpt compress \
 ```bash
 export LUBAN_LLM_COMPRESSOR_DRY_RUN=1
 luban-sculpt compress --profile nvidia_h20 \
-  --recipe luban_sculpt/recipes/h20_qwen_fp8_dynamic.yaml \
+  --recipe luban_sculpt/recipes/qwen2_5_7b.yaml \
   --output /tmp/h20-dry
 ```
 
@@ -91,7 +91,7 @@ calib:
 
 ```bash
 luban-sculpt compress --profile nvidia_h20 \
-  --recipe luban_sculpt/recipes/h20_qwen_fp8_block.yaml \
+  --recipe luban_sculpt/recipes/qwen2_5_7b.yaml --precision fp8_block \
   --output /data/out/h20-qwen-fp8-block
 ```
 
@@ -108,6 +108,6 @@ bash example/llm_compressor/h20/run_luban_h20_llama3_fp8_dynamic.sh
 
 ```bash
 luban-sculpt compress --profile nvidia_h20 \
-  --recipe luban_sculpt/recipes/h20_llama3_8b_fp8_dynamic.yaml \
+  --recipe luban_sculpt/recipes/llama3.yaml \
   --output /data/out/h20-llama3-8b-fp8-dynamic
 ```

@@ -10,7 +10,7 @@ export LUBAN_DEVICE_NAME="${LUBAN_DEVICE_NAME:-NVIDIA H20}"
 # ModelScope 默认 ID；本地目录可：MODEL_PATH=/data/models/Meta-Llama-3-8B-Instruct
 MODEL_PATH="${MODEL_PATH:-LLM-Research/Meta-Llama-3-8B-Instruct}"
 OUT="${OUT:-/data/out/h20-llama3-8b-fp8-dynamic}"
-RECIPE="${ROOT}/luban_sculpt/recipes/h20_llama3_8b_fp8_dynamic.yaml"
+RECIPE="${ROOT}/luban_sculpt/recipes/llama3.yaml"
 
 pip install -e "${ROOT}" -q
 pip install llmcompressor transformers accelerate modelscope -q
