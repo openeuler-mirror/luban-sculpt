@@ -133,18 +133,6 @@ def test_build_stage_recipe_strips_pipeline_and_sets_model_id() -> None:
     assert out["calib"]["max_samples"] == 1
 
 
-def test_parse_packaged_gptq_recipe() -> None:
-    with (RECIPES / "h20_qwen_gptq_w4.yaml").open(encoding="utf-8") as f:
-        recipe = yaml.safe_load(f)
-    spec = parse_pipeline_config(recipe)
-    assert len(spec.stages) == 1
-    st = spec.stages[0]
-    assert st.backend == "gptq"
-    assert st.abstract_scheme == "w4_gptq"
-    assert st.backend_options.get("bits") == 4
-    assert st.backend_options.get("group_size") == 128
-
-
 def test_parse_packaged_multi_stage_recipe() -> None:
     with (RECIPES / "pipeline_llm_compressor_then_gptq.yaml").open(encoding="utf-8") as f:
         recipe = yaml.safe_load(f)

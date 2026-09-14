@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from luban_sculpt.contracts import BackendPlan
+from luban_sculpt.log import get_logger
 from luban_sculpt.modifiers.registry import resolve_modifier_class
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 BaseBuilder = Callable[[BackendPlan], list[Any]]
 RecipeFinalizer = Callable[[list[Any]], Any]

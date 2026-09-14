@@ -7,6 +7,10 @@ import io
 import warnings
 from typing import Any
 
+from luban_sculpt.log import get_logger
+
+logger = get_logger(__name__)
+
 _STATE: dict[str, Any] | None = None
 
 
@@ -53,12 +57,9 @@ def ensure_llm_compressor_modifier_classes() -> dict[str, Any]:
     if "LubanHALCalibModifier" in probe_state:
         return probe_state
 
-    import logging
-
     modifier_base = probe_state["Modifier"]
     lc_state_cls = probe_state["State"]
     lc_event_cls = probe_state["Event"]
-    log = logging.getLogger("luban_sculpt.modifiers.builtins")
 
     class LubanHALCalibModifier(modifier_base):
         """校准开始/结束时写入 HAL 选中的 kernel（挂到 state.metadata）。"""
@@ -71,7 +72,7 @@ def ensure_llm_compressor_modifier_classes() -> dict[str, Any]:
             if meta is not None:
                 meta["luban_hal_calib_kernel"] = self.calib_kernel
                 meta["luban_profile_id"] = self.profile_name
-            log.info(
+            logger.info(
                 "LubanHALCalibModifier init kernel=%s profile=%s",
                 self.calib_kernel,
                 self.profile_name,
@@ -81,7 +82,7 @@ def ensure_llm_compressor_modifier_classes() -> dict[str, Any]:
         def on_calibration_start(
             self, state: lc_state_cls, event: lc_event_cls, **kwargs
         ) -> None:
-            log.debug("calibration_start hal_kernel=%s", self.calib_kernel)
+            logger.debug("calibration_start hal_kernel=%s", self.calib_kernel)
 
     class LubanProducerMetadataModifier(modifier_base):
         """Finalize 前写入 luban-sculpt producer 信息，便于 export 对账。"""
@@ -89,7 +90,7 @@ def ensure_llm_compressor_modifier_classes() -> dict[str, Any]:
         producer: dict[str, Any] | None = None
 
         def on_initialize(self, state: lc_state_cls, **kwargs) -> bool:
-            log.debug(
+            logger.debug(
                 "LubanProducerMetadataModifier init producer=%s",
                 self.producer,
             )

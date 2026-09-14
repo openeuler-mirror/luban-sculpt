@@ -152,6 +152,37 @@ def test_cmd_compress_via_main(
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert "manifest" in payload
+    log_file = out / "luban-sculpt.log"
+    assert log_file.is_file()
+    assert "luban-sculpt command=compress" in log_file.read_text(encoding="utf-8")
+
+
+def test_cmd_log_dir_explicit(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    log_dir = tmp_path / "logs"
+    rc = main(["--log-dir", str(log_dir), "backends"])
+    assert rc == 0
+    log_file = log_dir / "luban-sculpt.log"
+    assert log_file.is_file()
+    text = log_file.read_text(encoding="utf-8")
+    assert "command=backends" in text
+    listed = json.loads(capsys.readouterr().out)
+    assert "llm_compressor" in listed
+
+
+def test_cmd_default_local_log_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("LUBAN_LOG_DIR", raising=False)
+    rc = main(["backends"])
+    assert rc == 0
+    log_file = tmp_path / "logs" / "luban-sculpt.log"
+    assert log_file.is_file()
+    assert "command=backends" in log_file.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------

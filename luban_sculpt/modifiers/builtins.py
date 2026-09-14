@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from luban_sculpt.backends.llm_compressor.check import (
@@ -11,9 +10,10 @@ from luban_sculpt.backends.llm_compressor.check import (
     probe_llm_compressor,
 )
 from luban_sculpt.contracts import BackendPlan
+from luban_sculpt.log import get_logger
 from luban_sculpt.modifiers.base import ChainModifier
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _llm_compressor_available() -> bool:
