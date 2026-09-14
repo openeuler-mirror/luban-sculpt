@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from luban_sculpt.backends._util import run_with_hal
+from luban_sculpt.backends.backend_util import run_with_hal
 from luban_sculpt.backends.base import QuantBackend
 from luban_sculpt.contracts import BackendPlan, QuantizedArtifact
 

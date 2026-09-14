@@ -99,9 +99,9 @@ def test_single_recipe_still_works_via_pipeline(tmp_path: Path) -> None:
     import os
 
     os.environ["LUBAN_LLM_COMPRESSOR_DRY_RUN"] = "1"
-    recipe = RECIPES / "llama_fp8_dynamic.yaml"
+    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
     out = tmp_path / "single"
-    artifact = QuantPipeline(profile_name="generic_cpu").run(recipe, out)
+    artifact = QuantPipeline(profile_name="nvidia_h20").run(recipe, out)
     assert artifact.output_dir.is_dir()
     assert (artifact.output_dir / "manifest.json").is_file()
 
@@ -110,10 +110,10 @@ def test_pipeline_with_artifact_validate(tmp_path: Path) -> None:
     import os
 
     os.environ["LUBAN_LLM_COMPRESSOR_DRY_RUN"] = "1"
-    recipe = RECIPES / "llama_fp8_dynamic.yaml"
+    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
     out = tmp_path / "validated"
     artifact = QuantPipeline(
-        profile_name="generic_cpu",
+        profile_name="nvidia_h20",
         validate_quantized_model=True,
     ).run(recipe, out)
     assert (artifact.output_dir / "manifest.json").is_file()

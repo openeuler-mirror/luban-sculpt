@@ -5,8 +5,8 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from luban_sculpt.backends.llm_compressor.probe import probe_llmcompressor
-from luban_sculpt.backends.llm_compressor.scheme_map import resolve_compress_spec
+from luban_sculpt.backends.llm_compressor.check import probe_llm_compressor
+from luban_sculpt.backends.compress_spec import resolve_compress_spec
 from luban_sculpt.contracts import BackendPlan
 from luban_sculpt.log import get_logger
 
@@ -67,11 +67,11 @@ def build_base_modifiers(plan: BackendPlan) -> list[Any]:
     """按 abstract_scheme / CompressSpec 生成 GPTQ、AWQ 或 QuantizationModifier。"""
     opts = plan.intent.backend_options or {}
     lc = opts.get("llm_compressor") or opts
-    spec = resolve_compress_spec(plan.intent.abstract_scheme, lc_override=lc)
+    spec = resolve_compress_spec(plan.intent.abstract_scheme, compressor_options=lc)
     targets = lc.get("targets", "Linear")
     ignore = plan.intent.ignore or lc.get("ignore") or ["lm_head"]
 
-    state = probe_llmcompressor()
+    state = probe_llm_compressor()
     if not state.get("available"):
         return _stub_modifiers(spec, targets, ignore, lc)
 
@@ -145,10 +145,10 @@ def _live_modifiers(
     ignore: list[str],
     lc: dict[str, Any],
 ) -> list[Any]:
-    QuantizationModifier = state["QuantizationModifier"]
+    quantization_modifier = state["QuantizationModifier"]
     observer_overrides = _extract_observer_overrides(lc)
     if spec.algorithm == "gptq":
-        GPTQModifier = _import_gptq()
+        gptq_modifier = _import_gptq()
         kwargs: dict[str, Any] = {
             "targets": targets,
             "scheme": spec.scheme,
@@ -163,25 +163,25 @@ def _live_modifiers(
             if key in lc:
                 kwargs[key] = lc[key]
         # 新版本若支持 offload_hessians，默认打开（省主机内存）
-        filtered = _filter_kwargs(GPTQModifier, kwargs)
-        if "offload_hessians" in getattr(GPTQModifier, "model_fields", {}) and (
+        filtered = _filter_kwargs(gptq_modifier, kwargs)
+        if "offload_hessians" in getattr(gptq_modifier, "model_fields", {}) and (
             "offload_hessians" not in filtered
         ):
             filtered["offload_hessians"] = True
         logger.info("GPTQModifier kwargs=%s", sorted(filtered.keys()))
-        return [GPTQModifier(**filtered)]
+        return [gptq_modifier(**filtered)]
     if spec.algorithm == "awq":
-        AWQModifier = _import_awq()
+        awq_modifier = _import_awq()
         quant_kwargs: dict[str, Any] = {
             "targets": targets,
             "scheme": spec.scheme,
             "ignore": ignore,
         }
         quant_kwargs.update(observer_overrides)
-        filtered_quant = _filter_kwargs(QuantizationModifier, quant_kwargs)
+        filtered_quant = _filter_kwargs(quantization_modifier, quant_kwargs)
         return [
-            AWQModifier(duo_scaling=True),
-            QuantizationModifier(**filtered_quant),
+            awq_modifier(duo_scaling=True),
+            quantization_modifier(**filtered_quant),
         ]
     kwargs = {
         "targets": targets,
@@ -198,7 +198,7 @@ def _live_modifiers(
             spec.block_size,
             spec.scheme,
         )
-    filtered = _filter_kwargs(QuantizationModifier, kwargs)
+    filtered = _filter_kwargs(quantization_modifier, kwargs)
 
     logger.info(
         "QuantizationModifier scheme=%s kwargs=%s observer_overrides=%s",
@@ -207,7 +207,7 @@ def _live_modifiers(
         observer_overrides,
     )
 
-    return [QuantizationModifier(**filtered)]
+    return [quantization_modifier(**filtered)]
 
 
 def _import_gptq() -> Any:

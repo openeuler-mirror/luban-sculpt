@@ -6,11 +6,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from luban_sculpt.backends.hygon.scheme_map import (
+from luban_sculpt.backends.backend_util import run_with_hal
+from luban_sculpt.backends.base import QuantBackend
+from luban_sculpt.backends.hygon.check import (
     build_hygon_infer_payload,
     lc_options_from_hygon,
     resolve_hygon_spec,
 )
+from luban_sculpt.backends.oneshot_hooks import run_post_oneshot, run_pre_oneshot
+from luban_sculpt.contracts import QuantizedArtifact
 from luban_sculpt.contracts import BackendPlan, QuantIntent
 from luban_sculpt.log import get_logger
 
@@ -23,7 +27,7 @@ def plan_for_llm_compressor(plan: BackendPlan) -> tuple[BackendPlan, Any]:
     hygon_spec = resolve_hygon_spec(plan.intent.abstract_scheme, override=opts)
     lc = lc_options_from_hygon(hygon_spec, opts)
     new_opts = {**opts, "llm_compressor": lc}
-    # 顶层也放一份，方便 resolve_compress_spec(lc_override=opts)
+    # 顶层也放一份，方便 resolve_compress_spec(compressor_options=opts)
     for k, v in lc.items():
         new_opts.setdefault(k, v)
     intent = QuantIntent(
@@ -85,3 +89,22 @@ def run_hygon_quant(plan: BackendPlan, output_dir: Path) -> dict[str, Any]:
         "infer_quantization": hygon_spec.infer_quantization,
     }
     return meta
+
+
+class HygonBackend(QuantBackend):
+    """海光 DCU：llm-compressor 压缩 + enginex-hygon-vllm（slimquant / blockwise / awq_marlin）。"""
+
+    name = "hygon"
+
+    def quantize(self, plan: BackendPlan, output_dir: str) -> QuantizedArtifact:
+        logger.info(
+            "hygon quantize output_dir=%s plan=%s",
+            output_dir,
+            plan.model_dump_json(indent=2),
+        )
+        run_pre_oneshot(plan)
+        out = Path(output_dir)
+        meta = run_hygon_quant(plan, out)
+        artifact = run_with_hal(plan, out, meta)
+        run_post_oneshot(plan, artifact.output_dir)
+        return artifact

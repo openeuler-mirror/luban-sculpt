@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "ruff>=0.8"]
 llmcompressor = ["llmcompressor", "transformers"]
 vllm = ["vllm"]
 msmodelslim = ["msmodelslim"]
@@ -24,13 +24,13 @@ gptqmodel = ["gptqmodel", "datasets"]
 luban-sculpt = "luban_sculpt.cli:main"
 
 [project.entry-points."luban_sculpt.backends"]
-llm_compressor = "luban_sculpt.backends.llm_compressor:LLMCompressorBackend"
-hygon = "luban_sculpt.backends.hygon:HygonBackend"
-msmodelslim = "luban_sculpt.backends.msmodelslim:MsModelSlimBackend"
-awq = "luban_sculpt.backends.awq:AWQBackend"
-gptq = "luban_sculpt.backends.gptq:GPTQBackend"
-# infera = "luban_sculpt.backends.infera:InferaBackend"  # optional; enable when module exists
-custom = "luban_sculpt.backends.custom:CustomCompressorBackend"
+llm_compressor = "luban_sculpt.backends.llm_compressor.runner:LLMCompressorBackend"
+hygon = "luban_sculpt.backends.hygon.runner:HygonBackend"
+msmodelslim = "luban_sculpt.backends.msmodelslim.runner:MsModelSlimBackend"
+awq = "luban_sculpt.backends.awq.runner:AWQBackend"
+gptq = "luban_sculpt.backends.gptq.runner:GPTQBackend"
+# infera = "luban_sculpt.backends.infera.runner:InferaBackend"  # optional; enable when module exists
+custom = "luban_sculpt.backends.custom.runner:CustomCompressorBackend"
 
 # Optional third-party modifiers: add under [project.entry-points."luban_sculpt.modifiers"]
 # my_mod = "my_pkg.modifiers:MyModifier"
@@ -46,3 +46,15 @@ luban_sculpt = ["profiles/*.yaml", "recipes/*.yaml"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["luban_sculpt", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "N", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N802", "N803"]

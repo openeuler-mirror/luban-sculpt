@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from luban_sculpt.log.config import (
+from luban_sculpt.log.logging import (
     DEFAULT_DATE_FORMAT,
     DEFAULT_LOG_FORMAT,
     LOG_LEVEL_NAMES,

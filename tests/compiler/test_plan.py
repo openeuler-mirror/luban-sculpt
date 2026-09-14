@@ -50,8 +50,8 @@ from tests.paths import RECIPES
             ExportFormat.GPTQ_HF,
         ),
         (
-            "llama_fp8_dynamic.yaml",
-            "generic_cpu",
+            "h20_llama3_fp8_dynamic.yaml",
+            "nvidia_h20",
             "llm_compressor",
             "fp8_dynamic",
             ExportFormat.COMPRESSED_TENSORS,
@@ -117,7 +117,7 @@ def test_hygon_gptq_export_format() -> None:
 
 
 def test_compiled_plans_expose_model_arch() -> None:
-    plan = compile_plan(RECIPES / "llama_fp8_dynamic.yaml", "generic_cpu")
+    plan = compile_plan(RECIPES / "h20_llama3_fp8_dynamic.yaml", "nvidia_h20")
     assert plan.intent.model_arch.value == "llama"
 
     qwen = compile_plan(RECIPES / "ascend_qwen_w8a8.yaml", "ascend_910b")
@@ -130,7 +130,9 @@ def test_all_packaged_recipes_compile_with_matching_profile() -> None:
         "h20_qwen_fp8_dynamic.yaml": "nvidia_h20",
         "h20_qwen_fp8_block.yaml": "nvidia_h20",
         "h20_qwen_gptq_w4.yaml": "nvidia_h20",
-        "llama_fp8_dynamic.yaml": "generic_cpu",
+        "h20_llama3_fp8_dynamic.yaml": "nvidia_h20",
+        "h20_llama3_fp8_block.yaml": "nvidia_h20",
+        "h20_llama3_8b_fp8_dynamic.yaml": "nvidia_h20",
         "moe_int4.yaml": "generic_cpu",
         "ascend_qwen_w8a8.yaml": "ascend_910b",
         "hygon_qwen_w4a16_awq.yaml": "hygon_dcu",

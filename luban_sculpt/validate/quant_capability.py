@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from luban_sculpt.backends.msmodelslim.chips import scheme_implies_fp8
+from luban_sculpt.backends.msmodelslim.check import scheme_implies_fp8
 from luban_sculpt.contracts import HwDecision, ProbeResult, QuantIntent
 from luban_sculpt.hae.profile_fields import (
     infer_expected_deploy,
@@ -15,10 +15,12 @@ from luban_sculpt.log import get_logger
 
 logger = get_logger(__name__)
 
-# 旧 profile 仅有 w4a16_g32 时，把 w4a16 视作别名
+# profile schemes 键别名（与 backends.compress_spec 对齐）
 _SCHEME_ALIASES: dict[str, tuple[str, ...]] = {
-    "w4a16": ("w4a16_g32", "w4a16"),
-    "w4a16_g32": ("w4a16_g32", "w4a16"),
+    "w8a8_fp8": ("w8a8_fp8", "fp8_dynamic"),
+    "fp8_dynamic": ("fp8_dynamic", "w8a8_fp8"),
+    "w4a4_fp4": ("w4a4_fp4", "nvfp4"),
+    "nvfp4": ("nvfp4", "w4a4_fp4"),
 }
 
 

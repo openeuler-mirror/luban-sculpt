@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from luban_sculpt.contracts import BackendPlan, QuantizedArtifact
 from luban_sculpt.export.metadata import build_manifest
 from luban_sculpt.hal.pipeline import HALPipeline
-from luban_sculpt.contracts import BackendPlan, QuantizedArtifact
 from luban_sculpt.log import get_logger
 
 logger = get_logger(__name__)

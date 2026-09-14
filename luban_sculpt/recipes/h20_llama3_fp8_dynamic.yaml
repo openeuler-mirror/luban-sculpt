@@ -2,7 +2,7 @@
 #
 #   bash example/llm_compressor/h20/run_local_llama3_fp8.sh
 #   luban-sculpt compress --profile nvidia_h20 \
-#     --recipe luban_sculpt/recipes/h20_llama3_local_fp8_dynamic.yaml \
+#     --recipe luban_sculpt/recipes/h20_llama3_fp8_dynamic.yaml \
 #     --output ./out-h20-llama3-fp8-dynamic
 
 model_id: ./llama3

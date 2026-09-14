@@ -1,4 +1,4 @@
-"""Logging format and level tests."""
+"""Logging format and level tests (luban_sculpt.log.logging)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from luban_sculpt.log import (
     get_logger,
     resolve_log_level,
 )
+from luban_sculpt.log.logging import DEFAULT_LOG_FORMAT
 
 
 def test_log_format_includes_module_func_line() -> None:
@@ -80,3 +81,8 @@ def test_error_level_only_error_and_above() -> None:
 
 def test_log_level_names_are_four_cli_choices() -> None:
     assert LOG_LEVEL_NAMES == ("debug", "info", "warn", "error")
+
+
+def test_default_log_format_unchanged() -> None:
+    assert "funcName" in DEFAULT_LOG_FORMAT
+    assert "%(name)s" in DEFAULT_LOG_FORMAT

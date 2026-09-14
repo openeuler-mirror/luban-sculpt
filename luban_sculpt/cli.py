@@ -139,7 +139,7 @@ def _cmd_backends(_args: argparse.Namespace) -> int:
 
 
 def _cmd_ascend_chips(_args: argparse.Namespace) -> int:
-    from luban_sculpt.backends.msmodelslim.chips import ASCEND_CHIPS
+    from luban_sculpt.backends.msmodelslim.check import ASCEND_CHIPS
 
     rows = []
     for spec in ASCEND_CHIPS.values():

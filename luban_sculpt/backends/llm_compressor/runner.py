@@ -1,6 +1,6 @@
 """Run llm-compressor ``oneshot`` with luban Modifier 拦截链。
 
-- 按 scheme 选 GPTQ/AWQ/Quant recipe（见 scheme_map）
+- 按 scheme 选 GPTQ/AWQ/Quant recipe（见 backends.compress_spec）
 - ``save_compressed`` + 可选 ``quantization_format``
 - 海光推理 sidecar 由 ``luban_sculpt.backends.hygon`` 负责
 """
@@ -12,27 +12,28 @@ import os
 from pathlib import Path
 from typing import Any
 
-from luban_sculpt.backends.llm_compressor.probe import is_llmcompressor_available
+from luban_sculpt.backends.backend_util import run_with_hal
+from luban_sculpt.backends.base import QuantBackend
+from luban_sculpt.backends.llm_compressor.check import is_llm_compressor_available
+from luban_sculpt.backends.oneshot_hooks import run_post_oneshot, run_pre_oneshot
+from luban_sculpt.contracts import QuantizedArtifact
 from luban_sculpt.modifiers.recipe import build_recipe_for_plan
-from luban_sculpt.backends.llm_compressor.scheme_map import resolve_compress_spec
+from luban_sculpt.backends.compress_spec import resolve_compress_spec
 from luban_sculpt.calib import CalibRunner
 from luban_sculpt.contracts import BackendPlan
 from luban_sculpt.log import get_logger
 
 logger = get_logger(__name__)
 
-
-def _lc_opts(plan: BackendPlan) -> dict[str, Any]:
+def _compressor_options(plan: BackendPlan) -> dict[str, Any]:
     opts = plan.intent.backend_options or {}
     return opts.get("llm_compressor") or opts
-
 
 def _compress_spec(plan: BackendPlan):
     return resolve_compress_spec(
         plan.intent.abstract_scheme,
-        lc_override=_lc_opts(plan),
+        compressor_options=_compressor_options(plan),
     )
-
 
 def _oneshot_kwargs(
     plan: BackendPlan,
@@ -44,7 +45,7 @@ def _oneshot_kwargs(
     支持 ``llm_compressor.pipeline`` / ``llm_compressor.oneshot.pipeline``
     （如 ``sequential``：顺序加载、逐层量化）。
     """
-    lc = _lc_opts(plan)
+    lc = _compressor_options(plan)
     oneshot_cfg = dict(lc.get("oneshot") or {})
     # 顶层 pipeline 与 oneshot.pipeline 等价；oneshot 内显式值优先
     if "pipeline" not in oneshot_cfg and lc.get("pipeline") is not None:
@@ -156,7 +157,7 @@ def run_llm_compressor_oneshot(
             "yes",
         )
 
-    available = is_llmcompressor_available()
+    available = is_llm_compressor_available()
     if dry_run or not available:
         if not dry_run and not available:
             logger.warning(
@@ -178,7 +179,7 @@ def run_llm_compressor_oneshot(
             json.dumps(_recipe_to_jsonable(recipe), indent=2),
             encoding="utf-8",
         )
-        lc_opts = _lc_opts(plan)
+        lc_opts = _compressor_options(plan)
         pipe = lc_opts.get("pipeline")
         if pipe is None and spec.algorithm == "gptq":
             pipe = "sequential"
@@ -191,7 +192,7 @@ def run_llm_compressor_oneshot(
     from llmcompressor import oneshot
 
     model_id = plan.intent.model_id
-    lc_opts = _lc_opts(plan)
+    lc_opts = _compressor_options(plan)
     trust = lc_opts.get("trust_remote_code", True)
     if "trust_remote_code" in (plan.intent.backend_options or {}):
         trust = plan.intent.backend_options["trust_remote_code"]
@@ -373,7 +374,7 @@ def _render_oneshot_script(
     ignore = plan.intent.ignore or ["lm_head"]
     save_kw = _save_kwargs(spec)
     save_kw_repr = ", ".join(f"{k}={v!r}" for k, v in save_kw.items())
-    lc = _lc_opts(plan)
+    lc = _compressor_options(plan)
     pipeline = lc.get("pipeline")
     if pipeline is None and spec.algorithm == "gptq":
         pipeline = "sequential"
@@ -429,3 +430,24 @@ if tokenizer.pad_token is None:
 model.save_pretrained(SAVE_DIR, {save_kw_repr})
 tokenizer.save_pretrained(SAVE_DIR)
 '''
+
+
+class LLMCompressorBackend(QuantBackend):
+    """[vllm-project/llm-compressor](https://github.com/vllm-project/llm-compressor) + Modifier 拦截。"""
+
+    name = "llm_compressor"
+
+    def quantize(self, plan: BackendPlan, output_dir: str) -> QuantizedArtifact:
+        """pre hooks → oneshot → HAL/manifest → post hooks。"""
+        logger.info(
+            "llm_compressor quantize output_dir=%s plan=%s",
+            output_dir,
+            plan.model_dump_json(indent=2),
+        )
+
+        run_pre_oneshot(plan)
+        out = Path(output_dir)
+        lc_meta = run_llm_compressor_oneshot(plan, out)
+        artifact = run_with_hal(plan, out, lc_meta)
+        run_post_oneshot(plan, artifact.output_dir)
+        return artifact

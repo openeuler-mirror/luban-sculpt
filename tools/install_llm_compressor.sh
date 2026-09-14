@@ -28,8 +28,8 @@ fi
 
 pip install -e "${SRC}" -i "${INDEX}"
 python - <<'PY'
-from luban_sculpt.backends.llm_compressor.runner import is_llmcompressor_available
-ok = is_llmcompressor_available()
+from luban_sculpt.backends.llm_compressor.check import is_llm_compressor_available
+ok = is_llm_compressor_available()
 print(f"llmcompressor oneshot available: {ok}")
 if not ok:
     print("Falling back to LUBAN dry-run on this host is expected.")

@@ -26,7 +26,9 @@ from luban_sculpt.hae.engine import HardwareAwareEngine
 from luban_sculpt.pipeline import QuantPipeline
 from tests.paths import RECIPES
 
-PROFILE = "generic_cpu"
+# 单阶段 llm_compressor FP8 dry-run（H20 recipe + profile）
+H20_FP8_RECIPE = RECIPES / "h20_llama3_fp8_dynamic.yaml"
+H20_PROFILE = "nvidia_h20"
 
 
 @pytest.fixture(autouse=True)
@@ -49,26 +51,28 @@ def _read_json(path: Path) -> dict:
 def test_e2e_dry_run_single_stage_full_chain(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    recipe = RECIPES / "llama_fp8_dynamic.yaml"
+    recipe = H20_FP8_RECIPE
     out = tmp_path / "e2e_single"
 
     # 1) HAE
-    hw, probe, profile = HardwareAwareEngine(PROFILE).run(PROFILE)
-    assert hw.profile_id == PROFILE
+    hw, probe, profile = HardwareAwareEngine(H20_PROFILE).run(H20_PROFILE)
+    assert hw.profile_id == H20_PROFILE
     assert probe.ok is True
     assert "fp8_dynamic" in profile.get("schemes", {})
 
     # 2) compile
-    plan = compile_plan(recipe, PROFILE)
+    plan = compile_plan(recipe, H20_PROFILE)
     assert plan.intent.backend == "llm_compressor"
     assert plan.intent.abstract_scheme == "fp8_dynamic"
-    assert plan.intent.calib.get("source") == "stub"
+    assert plan.intent.model_arch.value == "llama"
+    assert plan.intent.calib.get("source") == "open-perfectblend"
+    assert plan.intent.backend_options.get("scheme") == "FP8_DYNAMIC"
     assert plan.export_format == ExportFormat.COMPRESSED_TENSORS
-    assert plan.hw.profile_id == PROFILE
+    assert plan.hw.profile_id == H20_PROFILE
 
     # 3) compress + 压后 HF 校验（dry-run 仅有 manifest 亦可）
     artifact = QuantPipeline(
-        profile_name=PROFILE,
+        profile_name=H20_PROFILE,
         validate_quantized_model=True,
     ).run(recipe, out)
 
@@ -76,13 +80,14 @@ def test_e2e_dry_run_single_stage_full_chain(
     assert stage_out == out / "stage_0_llm_compressor"
     assert (out / "pipeline_manifest.json").is_file()
     pipe = _read_json(out / "pipeline_manifest.json")
-    assert pipe["profile_id"] == PROFILE
+    assert pipe["profile_id"] == H20_PROFILE
     assert pipe["stages"][0]["backend"] == "llm_compressor"
 
     manifest = _read_json(stage_out / "manifest.json")
-    assert manifest["profile_id"] == PROFILE
+    assert manifest["profile_id"] == H20_PROFILE
     assert manifest["backend"] == "llm_compressor"
     assert manifest["abstract_scheme"] == "fp8_dynamic"
+    assert manifest["model_arch"] == "llama"
     assert manifest["export_format"] == "compressed-tensors"
     assert "vllm_launch" in manifest
 
@@ -107,20 +112,20 @@ def test_e2e_dry_run_single_stage_full_chain(
     assert rc == 0
     reported = json.loads(capsys.readouterr().out)
     assert reported["backend"] == "llm_compressor"
-    assert reported["profile_id"] == PROFILE
+    assert reported["profile_id"] == H20_PROFILE
 
 
 def test_e2e_dry_run_cli_probe_compress_validate_report(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """CLI 完整子命令链（与用户操作路径一致）。"""
-    recipe = RECIPES / "llama_fp8_dynamic.yaml"
+    recipe = H20_FP8_RECIPE
     out = tmp_path / "cli_chain"
 
-    rc = _cmd_probe(argparse.Namespace(profile=PROFILE))
+    rc = _cmd_probe(argparse.Namespace(profile=H20_PROFILE))
     assert rc == 0
     probe_out = json.loads(capsys.readouterr().out)
-    assert probe_out["profile_id"] == PROFILE
+    assert probe_out["profile_id"] == H20_PROFILE
     assert probe_out["probe_ok"] is True
     assert "fp8_dynamic" in probe_out["profile_keys"]
 
@@ -128,7 +133,7 @@ def test_e2e_dry_run_cli_probe_compress_validate_report(
         argparse.Namespace(
             recipe=str(recipe),
             output=str(out),
-            profile=PROFILE,
+            profile=H20_PROFILE,
             validate_quantized_model=True,
             validate_runtime=False,
             runtime_mode="import",
@@ -139,6 +144,7 @@ def test_e2e_dry_run_cli_probe_compress_validate_report(
     stage_out = Path(compress_payload["output"])
     assert stage_out == out / "stage_0_llm_compressor"
     assert compress_payload["manifest"]["backend"] == "llm_compressor"
+    assert compress_payload["manifest"]["abstract_scheme"] == "fp8_dynamic"
     assert (stage_out / "manifest.json").is_file()
     assert (stage_out / "quantized_model_validate.json").is_file()
     assert (stage_out / "llm_compressor_oneshot.py").is_file()
@@ -153,7 +159,7 @@ def test_e2e_dry_run_cli_probe_compress_validate_report(
     rc = _cmd_report(argparse.Namespace(model=str(stage_out)))
     assert rc == 0
     reported = json.loads(capsys.readouterr().out)
-    assert reported["profile_id"] == PROFILE
+    assert reported["profile_id"] == H20_PROFILE
 
     rc = _cmd_backends(argparse.Namespace())
     assert rc == 0
@@ -176,12 +182,12 @@ def test_e2e_dry_run_multi_stage_pipeline(tmp_path: Path) -> None:
     out = tmp_path / "e2e_multi"
 
     artifact = QuantPipeline(
-        profile_name=PROFILE,
+        profile_name="generic_cpu",
         validate_quantized_model=True,
     ).run(recipe, out)
 
     pipe_manifest = _read_json(out / "pipeline_manifest.json")
-    assert pipe_manifest["profile_id"] == PROFILE
+    assert pipe_manifest["profile_id"] == "generic_cpu"
     assert len(pipe_manifest["stages"]) == 2
     assert pipe_manifest["stages"][0]["backend"] == "llm_compressor"
     assert pipe_manifest["stages"][1]["backend"] == "gptq"

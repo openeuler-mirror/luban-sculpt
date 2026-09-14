@@ -28,8 +28,18 @@ _BACKEND_EXPORT: dict[str, ExportFormat] = {
 }
 
 _SCHEME_EXPORT_OVERRIDE: dict[str, ExportFormat] = {
+    # llm-compressor examples/quantization_*
+    "w4a16": ExportFormat.COMPRESSED_TENSORS,
+    "w4a16_fp4": ExportFormat.COMPRESSED_TENSORS,
+    "w4a4_fp4": ExportFormat.COMPRESSED_TENSORS,
+    "w4a4_mxfp4": ExportFormat.COMPRESSED_TENSORS,
+    "w4a8_fp8": ExportFormat.COMPRESSED_TENSORS,
+    "w8a8_fp8": ExportFormat.COMPRESSED_TENSORS,
+    "w8a8_int8": ExportFormat.COMPRESSED_TENSORS,
+    "w8a8_mxfp8": ExportFormat.COMPRESSED_TENSORS,
     "fp8_dynamic": ExportFormat.COMPRESSED_TENSORS,
     "fp8_block": ExportFormat.COMPRESSED_TENSORS,
+    "nvfp4": ExportFormat.COMPRESSED_TENSORS,
     "fp8_hf": ExportFormat.FP8_HF,
     "ascend_w8a8": ExportFormat.VLLM_ASCEND,
     "ascend_w4a8": ExportFormat.VLLM_ASCEND,
@@ -37,8 +47,6 @@ _SCHEME_EXPORT_OVERRIDE: dict[str, ExportFormat] = {
     "ascend_w8a16": ExportFormat.VLLM_ASCEND,
     "w4_gptq": ExportFormat.GPTQ_HF,
     "w4a16_awq": ExportFormat.AWQ_HF,
-    "w4a16": ExportFormat.COMPRESSED_TENSORS,
-    "w4a16_g32": ExportFormat.COMPRESSED_TENSORS,
     "hygon_w4a16_awq": ExportFormat.AWQ_HF,
     "hygon_w8a8_gptq": ExportFormat.GPTQ_HF,
     "slimquant_w4a8": ExportFormat.COMPRESSED_TENSORS,

@@ -1,4 +1,4 @@
-"""BackendPlan → gptqmodel GPTQConfig."""
+"""GPTQModel availability + BackendPlan → GPTQConfig."""
 
 from __future__ import annotations
 
@@ -8,6 +8,15 @@ from luban_sculpt.contracts import BackendPlan
 
 _DEFAULT_BITS = 4
 _DEFAULT_GROUP = 128
+
+
+def is_gptqmodel_available() -> bool:
+    try:
+        import gptqmodel  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
 
 
 def build_gptq_config(plan: BackendPlan) -> Any:

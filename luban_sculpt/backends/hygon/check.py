@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from luban_sculpt.backends.llm_compressor.scheme_map import CompressSpec
+from luban_sculpt.backends.compress_spec import CompressSpec
 
 
 @dataclass(frozen=True)
