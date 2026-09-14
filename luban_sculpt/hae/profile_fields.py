@@ -61,6 +61,11 @@ def profile_match_keys(profile: dict[str, Any]) -> list[str]:
     return [sk.lower()] if sk else []
 
 
-def infer_expected_deploy(scheme_cfg: dict[str, Any]) -> str | None:
+def expected_infer_runtime(scheme_cfg: dict[str, Any]) -> str | None:
+    """从 profile scheme 的 ``infer`` 块读取目标推理运行时。"""
     infer = scheme_cfg.get("infer") or {}
-    return infer.get("deploy_target") or infer.get("runtime")
+    return (
+        infer.get("infer_runtime")
+        or infer.get("runtime")
+        or infer.get("deploy_target")  # 旧字段兼容
+    )

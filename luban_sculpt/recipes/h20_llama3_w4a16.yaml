@@ -10,31 +10,32 @@
 
 model_id: ./llama3
 model_arch: llama
-quant:
-  backend: llm_compressor
-  abstract_scheme: w4a16
-  deploy_target: vllm_cuda
-  ignore:
-    - lm_head
-  llm_compressor:
-    algorithm: gptq
-    scheme: W4A16
-    block_size: 128
-    dampening_frac: 0.01
-    quantization_format: pack-quantized
-    trust_remote_code: true
-    # 关键：不要用 auto（会卸到 CPU，Propagating 时主机 RAM 爆 → SSH 断）
-    torch_dtype: float16
-    device_map: "cuda:0"
-    pipeline: sequential
-    gptq_max_samples_cap: 64
-    gptq_max_seq_cap: 512
-    modifiers:
-      - name: QuantizationPatch
-        mode: patch
-        ignore:
-          - lm_head
-    oneshot: {}
+pipeline:
+  stages:
+    - name: default
+      backend: llm_compressor
+      abstract_scheme: w4a16
+      ignore:
+        - lm_head
+      llm_compressor:
+        algorithm: gptq
+        scheme: W4A16
+        block_size: 128
+        dampening_frac: 0.01
+        quantization_format: pack-quantized
+        trust_remote_code: true
+        # 关键：不要用 auto（会卸到 CPU，Propagating 时主机 RAM 爆 → SSH 断）
+        torch_dtype: float16
+        device_map: "cuda:0"
+        pipeline: sequential
+        gptq_max_samples_cap: 64
+        gptq_max_seq_cap: 512
+        modifiers:
+          - name: QuantizationPatch
+            mode: patch
+            ignore:
+              - lm_head
+        oneshot: {}
 calib:
   source: open-perfectblend
   path: ./open-perfectblend

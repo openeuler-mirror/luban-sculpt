@@ -34,7 +34,7 @@ schemes:
       export: vllm_ascend
       default_quant_type: w8a8
     infer:
-      deploy_target: vllm_ascend
+      infer_runtime: vllm_ascend
       extra_args:
         - --quantization=ascend
       kernel_whitelist:
@@ -45,10 +45,10 @@ schemes:
       export: vllm_ascend
       default_quant_type: w4a8
     infer:
-      deploy_target: vllm_ascend
+      infer_runtime: vllm_ascend
   ascend_export:
     compress:
       backend: msmodelslim
       export: vllm_ascend
     infer:
-      deploy_target: vllm_ascend
+      infer_runtime: vllm_ascend

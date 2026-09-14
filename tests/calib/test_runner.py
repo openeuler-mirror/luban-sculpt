@@ -14,7 +14,7 @@ def _plan(**calib) -> BackendPlan:
             model_id="m",
             backend="gptq",
             abstract_scheme="w4_gptq",
-            deploy_target="vllm",
+            infer_runtime="vllm",
             calib=dict(calib),
         ),
         hw=HwDecision(profile_id="generic_cpu"),

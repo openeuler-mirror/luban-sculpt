@@ -7,6 +7,7 @@ from pathlib import Path
 from luban_sculpt.backends.msmodelslim.runner import (
     build_quant_argv,
     resolve_device,
+    resolve_quant_type,
     run_msmodelslim_quant,
 )
 from luban_sculpt.contracts import BackendPlan, ExportFormat, HwDecision, QuantIntent
@@ -18,7 +19,7 @@ def _plan(**opts) -> BackendPlan:
             model_id="/data/models/Qwen2.5-7B-Instruct",
             backend="msmodelslim",
             abstract_scheme="ascend_w8a8",
-            deploy_target="vllm_ascend",
+            infer_runtime="vllm_ascend",
             calib={"source": "stub", "max_samples": 8},
             backend_options={
                 "model_type": "Qwen2.5-7B-Instruct",
@@ -40,6 +41,18 @@ def test_msmodelslim_uses_calib_runner(tmp_path, monkeypatch) -> None:
     assert "--calib_file" not in meta["cli"]
     assert "--device_id" not in meta["cli"]
     assert meta["cli"][meta["cli"].index("--device") + 1] == "npu"
+
+
+def test_resolve_quant_type_maps_abstract_scheme() -> None:
+    w4 = _plan(quant_type=None)
+    w4.intent.abstract_scheme = "ascend_w4a8"
+    w4.intent.backend_options.pop("quant_type", None)
+    assert resolve_quant_type(w4) == "w4a8"
+
+    w8 = _plan(quant_type=None)
+    w8.intent.abstract_scheme = "ascend_w8a8"
+    w8.intent.backend_options.pop("quant_type", None)
+    assert resolve_quant_type(w8) == "w8a8"
 
 
 def test_resolve_device_formats() -> None:

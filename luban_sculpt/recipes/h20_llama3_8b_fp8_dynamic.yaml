@@ -6,25 +6,26 @@
 #     --output /data/out/h20-llama3-8b-fp8-dynamic
 model_id: LLM-Research/Meta-Llama-3-8B-Instruct
 model_arch: llama
-quant:
-  backend: llm_compressor
-  abstract_scheme: fp8_dynamic
-  deploy_target: vllm_cuda
-  ignore:
-    - lm_head
-  llm_compressor:
-    algorithm: quantization
-    scheme: FP8_DYNAMIC
-    trust_remote_code: true
-    torch_dtype: float16
-    device_map: "cuda:0"
-    pipeline: sequential
-    modifiers:
-      - name: QuantizationPatch
-        mode: patch
-        ignore:
-          - lm_head
-    oneshot: {}
+pipeline:
+  stages:
+    - name: default
+      backend: llm_compressor
+      abstract_scheme: fp8_dynamic
+      ignore:
+        - lm_head
+      llm_compressor:
+        algorithm: quantization
+        scheme: FP8_DYNAMIC
+        trust_remote_code: true
+        torch_dtype: float16
+        device_map: "cuda:0"
+        pipeline: sequential
+        modifiers:
+          - name: QuantizationPatch
+            mode: patch
+            ignore:
+              - lm_head
+        oneshot: {}
 calib:
   source: stub
   max_samples: 128

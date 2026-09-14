@@ -26,6 +26,6 @@
 - **msModelSlim（Ascend）**：`msmodelslim.allowed_quant_types` 等
 - **探测**：`required_ops_probe`、非空时的 `stack_gates`
 - **HAL 默认**：`hw_defaults`
-- **编排**：`backends`、`schemes`（compress backend / export，以及 infer 的 `deploy_target` 或 `runtime`）
+- **编排**：`backends`、`schemes`（compress backend / export；infer 的 `infer_runtime` 或 `runtime` 会在 compile 时写入 Intent/manifest）
 
 本目录只放 YAML 与说明，不含 Python 代码。

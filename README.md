@@ -130,7 +130,7 @@ luban-sculpt report --model ./out
 
 编排入口：`luban_sculpt.pipeline.QuantPipeline`。
 
-单阶段 Recipe（原 `quant:`）继续可用。多阶段示例：
+Recipe 统一用 `pipeline.stages`（单阶段也写 1 个元素）。多阶段示例：
 
 ```yaml
 pipeline:
@@ -231,14 +231,15 @@ luban-sculpt compress --profile hygon_dcu \
 ```yaml
 model_id: /data/models/Qwen2.5-7B-Instruct
 model_arch: qwen          # 可选；不写则自动推断
-quant:
-  backend: lmslim
-  abstract_scheme: hygon_w4a16_awq
-  deploy_target: vllm_rocm
-  ignore: [lm_head]       # 会与 ArchQuantPolicy.default_ignore 合并
-  lmslim:
-    algo: awq
-    strategy: w4a16
+pipeline:
+  stages:
+    - name: default
+      backend: lmslim
+      abstract_scheme: hygon_w4a16_awq
+      ignore: [lm_head]   # 会与 ArchQuantPolicy.default_ignore 合并
+      lmslim:
+        algo: awq
+        strategy: w4a16
 calib:
   source: pileval
   max_samples: 128

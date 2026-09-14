@@ -18,7 +18,7 @@ def _plan(*, modifiers=None) -> BackendPlan:
             model_id="m",
             backend="llm_compressor",
             abstract_scheme="fp8_dynamic",
-            deploy_target="vllm_cuda",
+            infer_runtime="vllm_cuda",
             backend_options=opts,
         ),
         hw=HwDecision(profile_id="generic_cpu"),

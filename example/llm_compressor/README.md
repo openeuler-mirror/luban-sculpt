@@ -20,19 +20,21 @@ Recipe YAML
 ## Recipe 示例
 
 ```yaml
-quant:
-  backend: llm_compressor
-  abstract_scheme: fp8_dynamic
-  llm_compressor:
-    scheme: FP8_DYNAMIC
-    # oneshot(pipeline=...)：顺序加载、逐层量化（降峰值内存）
-    # GPTQ 未写时默认 sequential；也可写在 oneshot.pipeline
-    pipeline: sequential
-    modifiers:
-      - name: HALCalibHook
-        mode: prepend
-      - name: DomesticFakeQuant
-        mode: append
+pipeline:
+  stages:
+    - name: default
+      backend: llm_compressor
+      abstract_scheme: fp8_dynamic
+      llm_compressor:
+        scheme: FP8_DYNAMIC
+        # oneshot(pipeline=...)：顺序加载、逐层量化（降峰值内存）
+        # GPTQ 未写时默认 sequential；也可写在 oneshot.pipeline
+        pipeline: sequential
+        modifiers:
+          - name: HALCalibHook
+            mode: prepend
+          - name: DomesticFakeQuant
+            mode: append
 ```
 
 ## 内置 Modifier

@@ -1,19 +1,21 @@
-# Ascend 910B — msModelSlim W4A8（原 FP8 block 命名保留；910B 无原生 FP8，低比特用 W4A8）
+# Ascend 910B — msModelSlim W8A8（原 FP8 dynamic 命名保留；910B 走 W8A8 → vLLM-Ascend）
 model_id: Qwen/Qwen2.5-7B-Instruct
 model_arch: qwen
 pipeline:
   stages:
     - name: default
       backend: msmodelslim
-      abstract_scheme: ascend_w4a8
+      abstract_scheme: ascend_w8a8
       ignore:
         - lm_head
-        - "re:.*mlp.gate$"
       msmodelslim:
         model_type: Qwen2.5-7B-Instruct
-        quant_type: w4a8
+        quant_type: w8a8
         device: npu
         trust_remote_code: true
 calib:
   source: stub
-  max_samples: 64
+  max_samples: 128
+  batch_size: 1
+  distributed: false
+  world_size: 1

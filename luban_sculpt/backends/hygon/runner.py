@@ -34,7 +34,7 @@ def plan_for_llm_compressor(plan: BackendPlan) -> tuple[BackendPlan, Any]:
         model_id=plan.intent.model_id,
         backend="llm_compressor",
         abstract_scheme=plan.intent.abstract_scheme,
-        deploy_target=plan.intent.deploy_target,
+        infer_runtime=plan.intent.infer_runtime,
         arch_snapshot=plan.intent.arch_snapshot,
         ignore=list(plan.intent.ignore),
         calib=dict(plan.intent.calib),

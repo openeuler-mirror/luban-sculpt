@@ -7,13 +7,14 @@ from typing import Any
 
 import yaml
 
+from luban_sculpt.contracts import BackendPlan, ExportFormat, HwDecision, QuantIntent
+from luban_sculpt.hae.profile_fields import expected_infer_runtime
+from luban_sculpt.log import get_logger
 from luban_sculpt.model import (
     apply_arch_to_backend_options,
-    resolve_model_arch,
     merge_ignore_list,
+    resolve_model_arch,
 )
-from luban_sculpt.contracts import BackendPlan, ExportFormat, HwDecision, QuantIntent
-from luban_sculpt.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -57,7 +58,7 @@ _SCHEME_EXPORT_OVERRIDE: dict[str, ExportFormat] = {
 
 
 def load_recipe_yaml(path: Path) -> dict[str, Any]:
-    """读取 recipe YAML（model_id / quant / calib）。"""
+    """读取 recipe YAML（model_id / pipeline / calib）。"""
     with path.open(encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -95,18 +96,23 @@ def compile_recipe(recipe: dict[str, Any], hw: HwDecision, profile: dict[str, An
     )
     calib = _scale_calib_for_arch(recipe.get("calib", {}), arch_snapshot)
 
+    abstract_scheme = q.get("abstract_scheme", q.get("scheme", "fp8_dynamic"))
+    schemes_cfg = profile.get("schemes", {}) or {}
+    scheme_cfg = schemes_cfg.get(abstract_scheme) or {}
+    # 推理运行时由 profile.schemes.*.infer 决定，不要求 recipe 再写一遍
+    infer_runtime = expected_infer_runtime(scheme_cfg) or "vllm_cuda"
+
     intent = QuantIntent(
         model_id=model_id,
         backend=backend,
-        abstract_scheme=q.get("abstract_scheme", q.get("scheme", "fp8_dynamic")),
-        deploy_target=q.get("deploy_target", "vllm_cuda"),
+        abstract_scheme=abstract_scheme,
+        infer_runtime=infer_runtime,
         arch_snapshot=arch_snapshot,
         ignore=ignore,
         calib=calib,
         backend_options=backend_options,
     )
 
-    scheme_cfg = profile.get("schemes", {}).get(intent.abstract_scheme, {})
     compress = scheme_cfg.get("compress", {})
     export = compress.get("export")
     if export:
@@ -126,11 +132,13 @@ def compile_recipe(recipe: dict[str, Any], hw: HwDecision, profile: dict[str, An
         export_format = ExportFormat.VLLM_ASCEND
 
     logger.info(
-        "compile_recipe model_id=%s arch=%s backend=%s scheme=%s export=%s profile=%s",
+        "compile_recipe model_id=%s arch=%s backend=%s scheme=%s "
+        "infer_runtime=%s export=%s profile=%s",
         model_id,
         arch_snapshot.arch.value,
         intent.backend,
         intent.abstract_scheme,
+        intent.infer_runtime,
         export_format.value,
         hw.profile_id,
     )

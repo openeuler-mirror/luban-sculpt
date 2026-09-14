@@ -11,7 +11,7 @@ from luban_sculpt.compiler.recipe_compiler import load_recipe_yaml
 from luban_sculpt.contracts import QuantizedArtifact
 from luban_sculpt.hae.engine import HardwareAwareEngine
 from luban_sculpt.log import set_log_level, get_logger
-from luban_sculpt.pipeline.recipe import parse_pipeline_config
+from luban_sculpt.pipeline.config import parse_pipeline_config
 from luban_sculpt.pipeline.context import PipelineContext
 from luban_sculpt.pipeline.stages import (
     QuantizedModelValidateStage,
@@ -66,29 +66,25 @@ class QuantPipeline:
                 )
 
     def run(self, recipe_path: Path, output_dir: Path) -> QuantizedArtifact:
-        """执行流水线，返回**最后一阶段**产物。"""
+        """从 YAML 路径加载 recipe 并执行流水线，返回最后一阶段产物。"""
         recipe = load_recipe_yaml(recipe_path)
-        return self.run_recipe(recipe, output_dir, recipe_path=recipe_path)
+        return self.run_recipe(recipe, output_dir)
 
     def run_recipe(
         self,
         recipe: dict,
         output_dir: Path,
-        *,
-        recipe_path: Path | None = None,
     ) -> QuantizedArtifact:
         pipeline_config = parse_pipeline_config(recipe)
         logger.info(
-            "pipeline start profile=%s recipe=%s model_id=%s stages=%s output=%s",
+            "pipeline start profile=%s model_id=%s stages=%s output=%s",
             self.profile_name,
-            recipe_path,
             recipe.get("model_id"),
             [s.name for s in self.stages],
             output_dir,
         )
         ctx = PipelineContext(
             recipe=recipe,
-            recipe_path=recipe_path,
             output_dir=output_dir,
             profile_name=self.profile_name,
             pipeline=pipeline_config,
@@ -102,9 +98,9 @@ class QuantPipeline:
                 raise RuntimeError("pipeline produced no artifact")
         except Exception:
             logger.error(
-                "pipeline failed profile=%s recipe=%s output=%s",
+                "pipeline failed profile=%s model_id=%s output=%s",
                 self.profile_name,
-                recipe_path,
+                recipe.get("model_id"),
                 output_dir,
                 exc_info=True,
             )

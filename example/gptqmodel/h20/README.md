@@ -55,14 +55,17 @@ print(llm.generate("Hello"))
 ## Recipe 字段说明
 
 ```yaml
-quant:
-  backend: gptq
-  gptq:
-    bits: 4
-    group_size: 128
-    sym: true
-    batch_size: 1      # 按 H20 96GB 显存可调大
-    device: cuda:0
+pipeline:
+  stages:
+    - name: default
+      backend: gptq
+      abstract_scheme: w4_gptq
+      gptq:
+        bits: 4
+        group_size: 128
+        sym: true
+        batch_size: 1      # 按 H20 96GB 显存可调大
+        device: cuda:0
 calib:
   source: stub         # 或 HuggingFace datasets 路径
   max_samples: 128

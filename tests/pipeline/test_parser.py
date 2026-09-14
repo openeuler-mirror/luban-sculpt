@@ -1,14 +1,15 @@
-"""Unit tests for pipeline/recipe.py (parse_pipeline_config, build_stage_recipe)."""
+"""Unit tests for pipeline/config.py (parse_pipeline_config, build_stage_recipe)."""
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import pytest
 import yaml
 
-from luban_sculpt.pipeline.recipe import build_stage_recipe, parse_pipeline_config
-from luban_sculpt.pipeline.config import QuantStageConfig
+from luban_sculpt.pipeline.config import (
+    QuantStageConfig,
+    build_stage_recipe,
+    parse_pipeline_config,
+)
 from tests.paths import RECIPES
 
 
@@ -28,29 +29,69 @@ def test_parse_pipeline_stages_dict() -> None:
     assert spec.stages[1].input_from == "previous"
 
 
-def test_parse_pipeline_list_shorthand() -> None:
+def test_parse_missing_pipeline_raises() -> None:
+    with pytest.raises(ValueError, match="requires pipeline.stages"):
+        parse_pipeline_config({"model_id": "m"})
+
+
+def test_parse_top_level_quant_raises() -> None:
+    with pytest.raises(ValueError, match="quant.*removed"):
+        parse_pipeline_config({"quant": {"backend": "gptq"}})
+
+
+def test_parse_pipeline_list_shorthand_raises() -> None:
+    with pytest.raises(ValueError, match="pipeline.stages"):
+        parse_pipeline_config(
+            {
+                "pipeline": [
+                    {"backend": "awq", "abstract_scheme": "w4a16_awq"},
+                ]
+            }
+        )
+
+
+def test_parse_pipeline_empty_dict_raises() -> None:
+    with pytest.raises(ValueError, match="stages"):
+        parse_pipeline_config({"pipeline": {}})
+
+
+def test_parse_pipeline_invalid_type_raises() -> None:
+    with pytest.raises(ValueError, match="mapping with 'stages'"):
+        parse_pipeline_config({"pipeline": "sequential"})
+
+
+def test_parse_stage_backend_block_merged_into_options() -> None:
     spec = parse_pipeline_config(
         {
-            "pipeline": [
-                {"backend": "awq", "abstract_scheme": "w4a16_awq"},
-                {"backend": "gptq", "name": "second"},
-            ]
+            "pipeline": {
+                "stages": [
+                    {
+                        "backend": "gptq",
+                        "backend_options": {"group_size": 64},
+                        "gptq": {"bits": 4},
+                    }
+                ]
+            }
         }
     )
-    assert spec.stages[0].name == "stage_0"
-    assert spec.stages[0].backend == "awq"
-    assert spec.stages[1].name == "second"
+    st = spec.stages[0]
+    assert st.backend_options["bits"] == 4
+    assert st.backend_options["group_size"] == 64
 
 
-def test_parse_single_quant_merges_backend_cfg_into_options() -> None:
-    """quant.gptq（backend_cfg）与 backend_options 合并，专属块覆盖同名键。"""
+def test_parse_stage_merges_backend_cfg_over_backend_options() -> None:
     spec = parse_pipeline_config(
         {
-            "quant": {
-                "backend": "gptq",
-                "abstract_scheme": "w4_gptq",
-                "backend_options": {"bits": 8, "group_size": 64},
-                "gptq": {"bits": 4, "sym": True},
+            "pipeline": {
+                "stages": [
+                    {
+                        "name": "default",
+                        "backend": "gptq",
+                        "abstract_scheme": "w4_gptq",
+                        "backend_options": {"bits": 8, "group_size": 64},
+                        "gptq": {"bits": 4, "sym": True},
+                    }
+                ]
             }
         }
     )
@@ -62,12 +103,17 @@ def test_parse_single_quant_merges_backend_cfg_into_options() -> None:
     assert st.backend_options["sym"] is True
 
 
-def test_parse_single_quant_default_backend_and_algorithm() -> None:
+def test_parse_single_stage_default_backend_and_algorithm() -> None:
     spec = parse_pipeline_config(
         {
-            "quant": {
-                "abstract_scheme": "fp8_dynamic",
-                "algorithm": "smoothquant",
+            "pipeline": {
+                "stages": [
+                    {
+                        "backend": "llm_compressor",
+                        "abstract_scheme": "fp8_dynamic",
+                        "algorithm": "smoothquant",
+                    }
+                ]
             }
         }
     )
@@ -78,8 +124,14 @@ def test_parse_single_quant_default_backend_and_algorithm() -> None:
     assert st.input_from == "recipe"
 
 
-def test_parse_single_quant_empty_ignore_becomes_none() -> None:
-    spec = parse_pipeline_config({"quant": {"backend": "gptq", "ignore": []}})
+def test_parse_stage_empty_ignore_becomes_none() -> None:
+    spec = parse_pipeline_config(
+        {
+            "pipeline": {
+                "stages": [{"backend": "gptq", "ignore": []}],
+            }
+        }
+    )
     assert spec.stages[0].ignore is None
 
 
@@ -100,21 +152,18 @@ def test_parse_stage_non_mapping_raises() -> None:
         parse_pipeline_config({"pipeline": {"stages": ["not-a-dict"]}})
 
 
-def test_build_stage_recipe_merges_base_backend_cfg() -> None:
-    base = {
-        "model_id": "hub/model",
-        "quant": {
-            "backend": "gptq",
-            "gptq": {"bits": 8, "group_size": -1},
-        },
-    }
+def test_build_stage_recipe_writes_quant_view() -> None:
     stage = QuantStageConfig(
         name="s",
         backend="gptq",
         abstract_scheme="w4_gptq",
-        backend_options={"bits": 4},
+        backend_options={"bits": 4, "group_size": -1},
     )
-    out = build_stage_recipe(base, stage, model_id="hub/model")
+    out = build_stage_recipe(
+        {"model_id": "hub/model", "calib": {"max_samples": 1}},
+        stage,
+        model_id="hub/model",
+    )
     assert out["quant"]["gptq"]["bits"] == 4
     assert out["quant"]["gptq"]["group_size"] == -1
 
@@ -123,7 +172,6 @@ def test_build_stage_recipe_strips_pipeline_and_sets_model_id() -> None:
     base = {
         "model_id": "orig",
         "pipeline": {"stages": []},
-        "quant": {"backend": "llm_compressor"},
         "calib": {"max_samples": 1},
     }
     stage = QuantStageConfig(name="s", backend="llm_compressor")
