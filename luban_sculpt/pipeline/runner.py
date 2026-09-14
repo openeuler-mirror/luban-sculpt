@@ -10,7 +10,7 @@ from luban_sculpt.backends.base import BackendRouter
 from luban_sculpt.compiler.recipe_compiler import load_recipe_yaml
 from luban_sculpt.contracts import QuantizedArtifact
 from luban_sculpt.hae.engine import HardwareAwareEngine
-from luban_sculpt.log import configure_logging, get_logger
+from luban_sculpt.log import set_log_level, get_logger
 from luban_sculpt.pipeline.recipe import parse_pipeline_config
 from luban_sculpt.pipeline.context import PipelineContext
 from luban_sculpt.pipeline.stages import (
@@ -22,7 +22,6 @@ from luban_sculpt.pipeline.stages import (
 from luban_sculpt.validate.runtime import RuntimeMode
 
 logger = get_logger(__name__)
-
 
 class QuantPipeline:
     """可扩展量化流水线。
@@ -38,7 +37,7 @@ class QuantPipeline:
         profile_name: str = "auto",
         *,
         router: BackendRouter | None = None,
-        hae: HardwareAwareEngine | None = None,
+        hae: HardwareAwareEngine | None = None, # 硬件感知引擎
         stages: Sequence[PipelineStage] | None = None,
         validate_quantized_model: bool = False,
         validate_runtime: bool = False,
@@ -47,7 +46,8 @@ class QuantPipeline:
         self.profile_name = profile_name
         self.router = router or BackendRouter()
         self.hae = hae or HardwareAwareEngine(profile_name)
-        configure_logging(level=os.environ.get("LUBAN_LOG_LEVEL", "info"))
+        log_level = os.environ.get("LUBAN_LOG_LEVEL", "info")
+        set_log_level(level=log_level)
 
         if stages is not None:
             self.stages: list[PipelineStage] = list(stages)

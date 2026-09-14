@@ -218,11 +218,11 @@ class HardwareAwareEngine:
         # Ascend SoC（环境变量 / 芯片表）
         soc = os.environ.get("LUBAN_ASCEND_SOC") or os.environ.get("ASCEND_SOC_VERSION")
         if soc or vendor == "ascend":
-            from luban_sculpt.backends.msmodelslim.chips import normalize_soc_key
+            from luban_sculpt.backends.msmodelslim.check import normalize_soc_key
 
             key = normalize_soc_key(soc or device)
             if key:
-                from luban_sculpt.backends.msmodelslim.chips import ASCEND_CHIPS
+                from luban_sculpt.backends.msmodelslim.check import ASCEND_CHIPS
 
                 return ASCEND_CHIPS[key].profile_name
 

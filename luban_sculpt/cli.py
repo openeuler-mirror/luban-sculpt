@@ -7,7 +7,13 @@ import json
 import sys
 from pathlib import Path
 
-from luban_sculpt.log import LOG_LEVEL_NAMES, configure_logging, get_logger
+from luban_sculpt.log import (
+    LOG_LEVEL_NAMES,
+    get_log_file_path,
+    get_logger,
+    resolve_log_dir,
+    set_log_level,
+)
 from luban_sculpt.backends.base import BackendRegistry
 from luban_sculpt.hae.engine import HardwareAwareEngine
 from luban_sculpt.pipeline import QuantPipeline
@@ -139,7 +145,7 @@ def _cmd_backends(_args: argparse.Namespace) -> int:
 
 
 def _cmd_ascend_chips(_args: argparse.Namespace) -> int:
-    from luban_sculpt.backends.msmodelslim.chips import ASCEND_CHIPS
+    from luban_sculpt.backends.msmodelslim.check import ASCEND_CHIPS
 
     rows = []
     for spec in ASCEND_CHIPS.values():
@@ -174,6 +180,14 @@ def main(argv: list[str] | None = None) -> int:
         default="info",
         choices=LOG_LEVEL_NAMES,
         help="Log verbosity: debug, info, warn, error",
+    )
+    parser.add_argument(
+        "--log-dir",
+        default=None,
+        help=(
+            "Directory for luban-sculpt.log (default: ./logs; "
+            "also LUBAN_LOG_DIR; compress 可回落到 --output)"
+        ),
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -235,8 +249,17 @@ def main(argv: list[str] | None = None) -> int:
     model_arches_parser.set_defaults(func=_cmd_model_arches)
 
     args = parser.parse_args(argv)
-    configure_logging(level=args.log_level, force=True)
-    logger.info("luban-sculpt command=%s log_level=%s", args.command, args.log_level)
+    compress_out = (
+        getattr(args, "output", None) if args.command == "compress" else None
+    )
+    log_dir = resolve_log_dir(args.log_dir, fallback=compress_out)
+    log_file = set_log_level(level=args.log_level, log_dir=log_dir, force=True)
+    logger.info(
+        "luban-sculpt command=%s log_level=%s log_file=%s",
+        args.command,
+        args.log_level,
+        log_file or get_log_file_path(),
+    )
     return args.func(args)
 
 

@@ -84,7 +84,7 @@ def test_mixtral_moe_ignore_gate() -> None:
 
 
 def test_compile_injects_arch_snapshot() -> None:
-    plan = compile_plan(RECIPES / "hygon_qwen_w4a16_awq.yaml", "hygon_dcu")
+    plan = compile_plan(RECIPES / "ascend_qwen_w8a8.yaml", "ascend_910b")
     assert plan.intent.arch_snapshot.arch == ModelArch.QWEN
     assert "re:.*mlp.gate$" in plan.intent.ignore
     assert plan.intent.backend_options.get("model_arch") == "qwen"

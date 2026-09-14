@@ -113,20 +113,20 @@ def test_cmd_compress_dry_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("LUBAN_LLM_COMPRESSOR_DRY_RUN", "1")
-    recipe = RECIPES / "llama_fp8_dynamic.yaml"
+    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
     out = tmp_path / "compress_out"
     rc = _cmd_compress(
         argparse.Namespace(
             recipe=str(recipe),
             output=str(out),
-            profile="generic_cpu",
+            profile="nvidia_h20",
         )
     )
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert Path(payload["output"]).is_dir()
     assert (Path(payload["output"]) / "manifest.json").is_file()
-    assert payload["manifest"]["profile_id"] == "generic_cpu"
+    assert payload["manifest"]["profile_id"] == "nvidia_h20"
     assert payload["manifest"]["backend"] == "llm_compressor"
 
 
@@ -136,7 +136,7 @@ def test_cmd_compress_via_main(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("LUBAN_LLM_COMPRESSOR_DRY_RUN", "1")
-    recipe = RECIPES / "llama_fp8_dynamic.yaml"
+    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
     out = tmp_path / "main_out"
     rc = main(
         [
@@ -146,12 +146,43 @@ def test_cmd_compress_via_main(
             "--output",
             str(out),
             "--profile",
-            "generic_cpu",
+            "nvidia_h20",
         ]
     )
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert "manifest" in payload
+    log_file = out / "luban-sculpt.log"
+    assert log_file.is_file()
+    assert "luban-sculpt command=compress" in log_file.read_text(encoding="utf-8")
+
+
+def test_cmd_log_dir_explicit(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    log_dir = tmp_path / "logs"
+    rc = main(["--log-dir", str(log_dir), "backends"])
+    assert rc == 0
+    log_file = log_dir / "luban-sculpt.log"
+    assert log_file.is_file()
+    text = log_file.read_text(encoding="utf-8")
+    assert "command=backends" in text
+    listed = json.loads(capsys.readouterr().out)
+    assert "llm_compressor" in listed
+
+
+def test_cmd_default_local_log_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("LUBAN_LOG_DIR", raising=False)
+    rc = main(["backends"])
+    assert rc == 0
+    log_file = tmp_path / "logs" / "luban-sculpt.log"
+    assert log_file.is_file()
+    assert "command=backends" in log_file.read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------

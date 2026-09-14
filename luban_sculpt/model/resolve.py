@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import json
-import logging
 import re
 from pathlib import Path
 from typing import Any
 
+from luban_sculpt.log import get_logger
 from luban_sculpt.model import dense as dense_mod
 from luban_sculpt.model import moe as moe_mod
 from luban_sculpt.model.presets import ARCH_POLICIES, get_arch_policy
 from luban_sculpt.model.types import MOE_ARCHES, ModelArch, ModelArchSnapshot
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # MoE first so qwen2_moe / DeepSeek-V3 win over dense qwen/deepseek
 _HF_MODEL_TYPE_MAP: dict[str, ModelArch] = {

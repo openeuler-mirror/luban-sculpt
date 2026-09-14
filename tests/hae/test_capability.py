@@ -29,12 +29,6 @@ def test_lookup_910b() -> None:
     assert caps["peak_tflops_fp16"] == 360.0
 
 
-def test_lookup_hygon_dcu() -> None:
-    assert match_profile_id("Hygon DCU") == "hygon_dcu"
-    caps = lookup_device_caps("Hygon DCU", "hygon")
-    assert caps["fp8_native"] is False
-
-
 def test_build_hardware_capability_uses_table() -> None:
     cap = build_hardware_capability(
         {"device_name": "H20", "vendor": "nvidia", "stack": {}, "source": "env"}

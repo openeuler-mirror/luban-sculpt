@@ -7,10 +7,10 @@ from typing import Any
 from luban_sculpt.contracts import BackendPlan
 
 
-def _lc_available() -> bool:
-    from luban_sculpt.backends.llm_compressor.probe import is_llmcompressor_available
+def _llm_compressor_available() -> bool:
+    from luban_sculpt.backends.llm_compressor.check import is_llm_compressor_available
 
-    return is_llmcompressor_available()
+    return is_llm_compressor_available()
 
 
 class ChainModifier:
@@ -58,13 +58,13 @@ class ChainModifier:
         spec: dict[str, Any],
     ) -> list[Any]:
         """就地改写链上 QuantizationModifier 等（llm-compressor）。"""
-        if not _lc_available():
+        if not _llm_compressor_available():
             return modifiers
-        from luban_sculpt.backends.llm_compressor.probe import probe_llmcompressor
+        from luban_sculpt.backends.llm_compressor.check import probe_llm_compressor
 
-        QuantizationModifier = probe_llmcompressor()["QuantizationModifier"]
+        quantization_modifier = probe_llm_compressor()["QuantizationModifier"]
         for mod in modifiers:
-            if isinstance(mod, QuantizationModifier):
+            if isinstance(mod, quantization_modifier):
                 if spec.get("scheme"):
                     mod.scheme = spec["scheme"]
                 if spec.get("targets"):

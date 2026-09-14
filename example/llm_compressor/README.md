@@ -15,7 +15,7 @@ Recipe YAML
 ```
 
 核心实现见 `luban_sculpt/modifiers/`（`ModifierManager` + `ChainModifier`）。
-本 backend 目录仅保留 oneshot runner / scheme_map / LC import。
+本 backend 目录保留 oneshot runner / LC import；scheme 映射见 ``luban_sculpt.backends.compress_spec``。
 
 ## Recipe 示例
 

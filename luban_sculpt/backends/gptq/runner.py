@@ -7,21 +7,19 @@ import os
 from pathlib import Path
 from typing import Any
 
-from luban_sculpt.backends.gptq.config_builder import build_gptq_config, resolve_model_id
+from luban_sculpt.backends.backend_util import run_with_hal
+from luban_sculpt.backends.base import QuantBackend
+from luban_sculpt.backends.gptq.check import (
+    build_gptq_config,
+    is_gptqmodel_available,
+    resolve_model_id,
+)
+from luban_sculpt.contracts import QuantizedArtifact
 from luban_sculpt.calib import CalibRunner
 from luban_sculpt.contracts import BackendPlan
 from luban_sculpt.log import get_logger
 
 logger = get_logger(__name__)
-
-
-def is_gptqmodel_available() -> bool:
-    try:
-        import gptqmodel  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
 
 
 def run_gptqmodel_quantize(
@@ -112,3 +110,15 @@ model = GPTQModel.load(MODEL_ID, quant_config)
 model.quantize(calibration_dataset, batch_size={batch_size})
 model.save(SAVE_DIR)
 '''
+
+
+class GPTQBackend(QuantBackend):
+    """[ModelCloud/GPTQModel](https://github.com/ModelCloud/GPTQModel) GPTQ 量化 → vLLM gptq。"""
+
+    name = "gptq"
+
+    def quantize(self, plan: BackendPlan, output_dir: str) -> QuantizedArtifact:
+        """GPTQModel 量化并写 manifest（无 llm-compressor hooks）。"""
+        out = Path(output_dir)
+        gptq_meta = run_gptqmodel_quantize(plan, out)
+        return run_with_hal(plan, out, gptq_meta)
