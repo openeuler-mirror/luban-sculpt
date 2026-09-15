@@ -40,7 +40,7 @@ where = ["."]
 include = ["luban_sculpt*"]
 
 [tool.setuptools.package-data]
-luban_sculpt = ["profiles/*.yaml", "recipes/*.yaml"]
+luban_sculpt = ["profiles/*.yaml", "templates/*.yaml", "recipes/**/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

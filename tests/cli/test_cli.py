@@ -113,7 +113,9 @@ def test_cmd_compress_dry_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("LUBAN_LLM_COMPRESSOR_DRY_RUN", "1")
-    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
+    from tests.paths import LLAMA3_EXAMPLE
+
+    recipe = LLAMA3_EXAMPLE
     out = tmp_path / "compress_out"
     rc = _cmd_compress(
         argparse.Namespace(
@@ -136,7 +138,9 @@ def test_cmd_compress_via_main(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("LUBAN_LLM_COMPRESSOR_DRY_RUN", "1")
-    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
+    from tests.paths import LLAMA3_EXAMPLE
+
+    recipe = LLAMA3_EXAMPLE
     out = tmp_path / "main_out"
     rc = main(
         [

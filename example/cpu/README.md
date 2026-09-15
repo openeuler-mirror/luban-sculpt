@@ -5,8 +5,9 @@
 | 项 | 值 |
 |----|-----|
 | Profile | `profiles/generic_cpu.yaml`（默认回退） |
-| 单阶段 Recipe | `recipes/llama_fp8_dynamic.yaml` |
-| 多阶段 Recipe | `recipes/pipeline_llm_compressor_then_gptq.yaml` |
+| 单阶段 Recipe | `recipes/llama3.yaml` |
+| 多阶段 preset | `recipes/llama3.yaml` + `--pipeline-preset fp8_then_gptq` |
+| 多阶段 recipe | `recipes/llama3_fp8_then_gptq.yaml` |
 | Dry-run 环境变量 | `LUBAN_LLM_COMPRESSOR_DRY_RUN=1`、`LUBAN_GPTQMODEL_DRY_RUN=1` |
 
 ## 一键脚本
@@ -20,15 +21,19 @@ bash example/cpu/run_cpu_dry_run.sh
 步骤：
 
 1. `probe --profile generic_cpu`
-2. 单 recipe compress dry-run → manifest + oneshot stub
-3. pipeline dry-run（FP8 → GPTQ）→ `pipeline_manifest.json` + 两阶段目录
+2. 单 recipe compress dry-run（`llama3.yaml` + `--model-id`）→ manifest + oneshot stub
+3. pipeline dry-run（preset：`fp8_then_gptq`）→ `pipeline_manifest.json` + 两阶段目录
+4. 打包两阶段 recipe（`llama3_fp8_then_gptq.yaml`）
 
-输出默认：`/tmp/luban_cpu_dry_run`、`/tmp/luban_cpu_pipeline_dry_run`（可用 `OUT` / `PIPE_OUT` 覆盖）。
+输出默认：`/tmp/luban_cpu_dry_run`、`/tmp/luban_cpu_pipeline_dry_run`、`/tmp/luban_cpu_packaged_two_stage`（可用 `OUT` / `PIPE_OUT` / `PACKAGED_OUT` 覆盖）。
+
+全仓库测试命令见 [README.md §4 测试](../../README.md)、[tests/README.md](../../tests/README.md)。
 
 ## pytest
 
 ```bash
-pytest example/cpu/test_cpu_dry_run.py -q
+export LUBAN_LLM_COMPRESSOR_DRY_RUN=1 LUBAN_GPTQMODEL_DRY_RUN=1
+pytest tests/ example/cpu/test_cpu_dry_run.py -q
 ```
 
 与脚本同一套 dry-run 断言（probe / compile / compress / pipeline）。

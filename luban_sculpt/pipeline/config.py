@@ -9,13 +9,36 @@ from pydantic import BaseModel, Field
 
 InputFrom = Literal["recipe", "previous"]
 
+_STAGE_BACKEND_BLOCKS = (
+    "llm_compressor",
+    "msmodelslim",
+    "gptq",
+    "awq",
+    "hygon",
+    "custom",
+)
+
+# 可写在 stage.compress 或 stage 顶层的算法参数（不绑定具体 backend 名）
+_STAGE_COMPRESS_OVERLAY_KEYS = (
+    "modifiers",
+    "modifier_chain",
+    "observer",
+    "weight_observer",
+    "input_observer",
+    "output_observer",
+    "targets",
+)
+
 
 class QuantStageConfig(BaseModel):
     """单段量化设置：backend、算法与阶段间串接。"""
 
     name: str = "stage"
-    backend: str
-    """量化后端 entry_point 名，如 llm_compressor / gptq / awq。"""
+    backend: str = "auto"
+    """量化后端；``auto`` 时由 profile + precision/scheme 在 compile 阶段解析。"""
+
+    precision: str | None = None
+    """用户面向精度（如 fp8_dynamic / w8a8）；与 abstract_scheme 二选一，scheme 优先。"""
 
     algorithm: str | None = None
     """算法提示（写入 backend_options.algo），如 awq / gptq / smoothquant。"""
@@ -24,6 +47,12 @@ class QuantStageConfig(BaseModel):
     ignore: list[str] | None = None
     backend_options: dict[str, Any] = Field(default_factory=dict)
     """后端私有参数；可与 stage 上的 ``<backend>: { ... }`` 块合并（本字段优先）。"""
+
+    backend_blocks: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    """stage YAML 中各 ``<backend>: {{ ... }}`` 块（``backend: auto`` 时 compile 再择一）。"""
+
+    compress_overlay: dict[str, Any] = Field(default_factory=dict)
+    """与 backend 解耦的压缩算法参数（``modifiers`` / ``observer`` 等），compile 时并入选中的 backend。"""
 
     input_from: InputFrom = "recipe"
     """recipe=原始 model_id；previous=上一阶段 output_dir。"""
@@ -93,15 +122,30 @@ def _parse_stage(item: Any, idx: int) -> QuantStageConfig:
         raise TypeError(f"pipeline stage[{idx}] must be a mapping, got {type(item)}")
     data = dict(item)
     data.setdefault("name", f"stage_{idx}")
-    if "backend" not in data:
-        raise ValueError(f"pipeline stage[{idx}] missing required field 'backend'")
+    data.setdefault("backend", "auto")
     if data.get("algorithm") is None and data.get("algo") is not None:
         data["algorithm"] = data.pop("algo")
     else:
         data.pop("algo", None)
 
+    overlay: dict[str, Any] = {}
+    compress_block = data.pop("compress", None)
+    if isinstance(compress_block, dict):
+        overlay.update(compress_block)
+    for key in _STAGE_COMPRESS_OVERLAY_KEYS:
+        if key in data:
+            overlay[key] = data.pop(key)
+    data["compress_overlay"] = overlay
+
     backend = str(data["backend"])
     backend_cfg = data.pop(backend, None)
+    extra_blocks: dict[str, dict[str, Any]] = {}
+    for key in _STAGE_BACKEND_BLOCKS:
+        if key in data and key != backend:
+            block = data.pop(key)
+            if isinstance(block, dict):
+                extra_blocks[key] = block
+    data["backend_blocks"] = extra_blocks
     data["backend_options"] = _merge_backend_block(
         data.get("backend_options"), backend_cfg
     )
@@ -129,10 +173,24 @@ def build_stage_recipe(
 
     quant: dict[str, Any] = {
         "backend": stage.backend,
-        "abstract_scheme": stage.abstract_scheme or "fp8_dynamic",
         "ignore": list(stage.ignore) if stage.ignore is not None else [],
-        stage.backend: opts,
     }
+    if stage.abstract_scheme:
+        quant["abstract_scheme"] = stage.abstract_scheme
+    elif stage.precision:
+        quant["precision"] = stage.precision
+    else:
+        quant["precision"] = "fp8_dynamic"
+
+    if stage.compress_overlay:
+        quant["compress_overlay"] = dict(stage.compress_overlay)
+
+    for bk, block in (stage.backend_blocks or {}).items():
+        quant[bk] = dict(block)
+    if stage.backend != "auto":
+        quant[stage.backend] = {**dict(stage.backend_blocks.get(stage.backend, {})), **opts}
+    elif opts:
+        quant["backend_options"] = opts
 
     out = {
         k: v
@@ -142,3 +200,5 @@ def build_stage_recipe(
     out["model_id"] = model_id
     out["quant"] = quant
     return out
+
+

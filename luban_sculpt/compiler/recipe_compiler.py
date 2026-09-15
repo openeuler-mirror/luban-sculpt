@@ -10,11 +10,14 @@ import yaml
 from luban_sculpt.contracts import BackendPlan, ExportFormat, HwDecision, QuantIntent
 from luban_sculpt.hae.profile_fields import expected_infer_runtime
 from luban_sculpt.log import get_logger
+from luban_sculpt.hae.resolve_quant import resolve_quant_block
 from luban_sculpt.model import (
     apply_arch_to_backend_options,
     merge_ignore_list,
     resolve_model_arch,
 )
+from luban_sculpt.compiler.recipe_template import resolve_recipe_extends
+from luban_sculpt.model.recipe_model import normalize_recipe_model
 
 logger = get_logger(__name__)
 
@@ -57,10 +60,14 @@ _SCHEME_EXPORT_OVERRIDE: dict[str, ExportFormat] = {
 }
 
 
-def load_recipe_yaml(path: Path) -> dict[str, Any]:
-    """读取 recipe YAML（model_id / pipeline / calib）。"""
+def load_recipe_yaml(path: Path, *, validate_model_layout: bool = True) -> dict[str, Any]:
+    """读取 recipe YAML 并规范化 ``model`` 块 → ``model_id``。"""
     with path.open(encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        doc = yaml.safe_load(f)
+    if not isinstance(doc, dict):
+        raise ValueError(f"recipe must be a mapping: {path}")
+    doc = resolve_recipe_extends(doc, recipe_path=path)
+    return normalize_recipe_model(doc, validate_layout=validate_model_layout)
 
 
 def _scale_calib_for_arch(calib: dict[str, Any], arch_snapshot) -> dict[str, Any]:
@@ -82,8 +89,8 @@ def compile_recipe(recipe: dict[str, Any], hw: HwDecision, profile: dict[str, An
     """Recipe + Profile + HwDecision → QuantIntent 与 export_format，组装 BackendPlan。"""
     model_id = recipe["model_id"]
     q = recipe.get("quant", {})
-    backend = q.get("backend", "llm_compressor")
     arch_snapshot = resolve_model_arch(model_id, recipe=recipe)
+    abstract_scheme, backend, wired_opts = resolve_quant_block(q, profile)
     ignore = merge_ignore_list(
         q.get("ignore"),
         arch_snapshot.arch,
@@ -91,12 +98,12 @@ def compile_recipe(recipe: dict[str, Any], hw: HwDecision, profile: dict[str, An
     )
     backend_options = apply_arch_to_backend_options(
         backend,
-        q.get(backend, q.get("backend_options", {})),
+        wired_opts,
         arch_snapshot,
     )
+    if backend == "msmodelslim" and not backend_options.get("model_type"):
+        backend_options.setdefault("model_type", Path(str(model_id)).name)
     calib = _scale_calib_for_arch(recipe.get("calib", {}), arch_snapshot)
-
-    abstract_scheme = q.get("abstract_scheme", q.get("scheme", "fp8_dynamic"))
     schemes_cfg = profile.get("schemes", {}) or {}
     scheme_cfg = schemes_cfg.get(abstract_scheme) or {}
     # 推理运行时由 profile.schemes.*.infer 决定，不要求 recipe 再写一遍

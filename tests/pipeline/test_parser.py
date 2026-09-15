@@ -142,9 +142,41 @@ def test_parse_stage_algo_field_becomes_algorithm() -> None:
     assert spec.stages[0].algorithm == "gptq"
 
 
-def test_parse_stage_missing_backend_raises() -> None:
-    with pytest.raises(ValueError, match="missing required field 'backend'"):
-        parse_pipeline_config({"pipeline": {"stages": [{"name": "x"}]}})
+def test_parse_stage_missing_backend_defaults_auto() -> None:
+    spec = parse_pipeline_config({"pipeline": {"stages": [{"name": "x"}]}})
+    assert spec.stages[0].backend == "auto"
+    assert spec.stages[0].precision is None
+
+
+def test_parse_stage_compress_overlay_decoupled_from_backend() -> None:
+    spec = parse_pipeline_config(
+        {
+            "pipeline": {
+                "stages": [
+                    {
+                        "backend": "auto",
+                        "compress": {
+                            "observer": {"weights": "minmax"},
+                            "modifiers": [{"name": "QuantizationPatch", "mode": "patch"}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+    st = spec.stages[0]
+    assert st.compress_overlay["observer"] == {"weights": "minmax"}
+    assert st.compress_overlay["modifiers"][0]["name"] == "QuantizationPatch"
+
+
+def test_build_stage_recipe_passes_compress_overlay() -> None:
+    stage = QuantStageConfig(
+        name="s",
+        backend="auto",
+        compress_overlay={"observer": {"input": "minmax"}},
+    )
+    out = build_stage_recipe({"model_id": "m"}, stage, model_id="m")
+    assert out["quant"]["compress_overlay"]["observer"] == {"input": "minmax"}
 
 
 def test_parse_stage_non_mapping_raises() -> None:
@@ -182,8 +214,16 @@ def test_build_stage_recipe_strips_pipeline_and_sets_model_id() -> None:
 
 
 def test_parse_packaged_multi_stage_recipe() -> None:
-    with (RECIPES / "pipeline_llm_compressor_then_gptq.yaml").open(encoding="utf-8") as f:
-        recipe = yaml.safe_load(f)
+    from luban_sculpt.pipeline.recipe_overrides import apply_recipe_cli_overrides
+
+    from luban_sculpt.compiler.recipe_compiler import load_recipe_yaml
+    from tests.paths import LLAMA3_EXAMPLE
+
+    recipe = apply_recipe_cli_overrides(
+        load_recipe_yaml(LLAMA3_EXAMPLE, validate_model_layout=False),
+        pipeline_preset="fp8_then_gptq",
+        model_id="meta-llama/Llama-3.1-8B-Instruct",
+    )
     spec = parse_pipeline_config(recipe)
     assert len(spec.enabled_stages()) == 2
     assert spec.stages[0].name == "fp8_prep"

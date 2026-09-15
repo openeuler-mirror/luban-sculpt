@@ -83,8 +83,16 @@ def test_mixtral_moe_ignore_gate() -> None:
     assert "re:.*block_sparse_moe\\.gate$" in ignore
 
 
-def test_compile_injects_arch_snapshot() -> None:
-    plan = compile_plan(RECIPES / "ascend_qwen_w8a8.yaml", "ascend_910b")
+def test_compile_injects_arch_snapshot(tmp_path) -> None:
+    from tests.paths import QWEN25_EXAMPLE
+    from tests.recipe_materialize import materialize_recipe
+
+    recipe = materialize_recipe(
+        QWEN25_EXAMPLE,
+        tmp_path / "qwen-w8a8.yaml",
+        precision="w8a8",
+    )
+    plan = compile_plan(recipe, "ascend_910b")
     assert plan.intent.arch_snapshot.arch == ModelArch.QWEN
     assert "re:.*mlp.gate$" in plan.intent.ignore
     assert plan.intent.backend_options.get("model_arch") == "qwen"

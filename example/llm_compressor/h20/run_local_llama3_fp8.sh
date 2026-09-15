@@ -12,7 +12,7 @@ unset LUBAN_LLM_COMPRESSOR_DRY_RUN || true
 MODEL_PATH="${MODEL_PATH:-./llama3}"
 CALIB_PATH="${CALIB_PATH:-./open-perfectblend}"
 OUT="${OUT:-./out-h20-llama3-fp8-dynamic}"
-RECIPE_SRC="${ROOT}/luban_sculpt/recipes/h20_llama3_fp8_dynamic.yaml"
+RECIPE_SRC="${ROOT}/luban_sculpt/recipes/llama3.yaml"
 
 if [[ ! -d "${MODEL_PATH}" ]]; then
   echo "ERROR: model dir missing: ${MODEL_PATH}"

@@ -7,6 +7,7 @@ OUT="${OUT:-/tmp/luban_msmodelslim_out}"
 pip install -e "${ROOT}" -q
 luban-sculpt compress \
   --profile "ascend_${LUBAN_ASCEND_SOC}" \
-  --recipe "${ROOT}/luban_sculpt/recipes/ascend_qwen_w8a8.yaml" \
+  --recipe "${ROOT}/luban_sculpt/recipes/qwen2_5_7b.yaml" \
+  --precision w8a8 \
   --output "${OUT}"
 echo "Generated: ${OUT}/msmodelslim_command.sh"

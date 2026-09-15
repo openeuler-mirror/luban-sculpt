@@ -26,7 +26,7 @@ export LUBAN_MSMODELSLIM_DRY_RUN=1
 luban-sculpt probe --profile ascend_910b
 luban-sculpt compress \
   --profile ascend_910b \
-  --recipe luban_sculpt/recipes/ascend_qwen_w8a8.yaml \
+  --recipe luban_sculpt/recipes/qwen2_5_7b.yaml --precision w8a8 \
   --output /data/out/qwen2.5-7b-w8a8
 ```
 

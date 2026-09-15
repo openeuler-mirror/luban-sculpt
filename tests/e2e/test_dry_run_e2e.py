@@ -24,10 +24,12 @@ from luban_sculpt.compiler.plan import compile_plan
 from luban_sculpt.contracts import ExportFormat
 from luban_sculpt.hae.engine import HardwareAwareEngine
 from luban_sculpt.pipeline import QuantPipeline
-from tests.paths import RECIPES
+from luban_sculpt.pipeline.recipe_overrides import apply_recipe_cli_overrides
+from tests.paths import LLAMA3_EXAMPLE, LLAMA3_FP8_THEN_GPTQ, QWEN25_EXAMPLE, RECIPES
+from tests.recipe_materialize import materialize_recipe
 
 # 单阶段 llm_compressor FP8 dry-run（H20 recipe + profile）
-H20_FP8_RECIPE = RECIPES / "h20_llama3_fp8_dynamic.yaml"
+H20_FP8_RECIPE = LLAMA3_EXAMPLE
 H20_PROFILE = "nvidia_h20"
 
 
@@ -178,13 +180,22 @@ def test_e2e_dry_run_cli_probe_compress_validate_report(
 
 
 def test_e2e_dry_run_multi_stage_pipeline(tmp_path: Path) -> None:
-    recipe = RECIPES / "pipeline_llm_compressor_then_gptq.yaml"
+    import yaml
+
+    from luban_sculpt.compiler.recipe_compiler import load_recipe_yaml
+
+    recipe_doc = apply_recipe_cli_overrides(
+        load_recipe_yaml(LLAMA3_EXAMPLE, validate_model_layout=False),
+        pipeline_preset="fp8_then_gptq",
+        model_id="meta-llama/Llama-3.1-8B-Instruct",
+        validate_model_layout=False,
+    )
     out = tmp_path / "e2e_multi"
 
     artifact = QuantPipeline(
         profile_name="generic_cpu",
         validate_quantized_model=True,
-    ).run(recipe, out)
+    ).run_recipe(recipe_doc, out)
 
     pipe_manifest = _read_json(out / "pipeline_manifest.json")
     assert pipe_manifest["profile_id"] == "generic_cpu"
@@ -209,27 +220,45 @@ def test_e2e_dry_run_multi_stage_pipeline(tmp_path: Path) -> None:
     assert _read_json(stage2 / "quantized_model_validate.json")["ok"] is True
 
 
+def test_e2e_dry_run_packaged_two_stage_recipe(tmp_path: Path) -> None:
+    out = tmp_path / "e2e_packaged_two_stage"
+    artifact = QuantPipeline(
+        profile_name="generic_cpu",
+        validate_quantized_model=True,
+    ).run(LLAMA3_FP8_THEN_GPTQ, out)
+
+    pipe_manifest = _read_json(out / "pipeline_manifest.json")
+    assert len(pipe_manifest["stages"]) == 2
+    assert pipe_manifest["stages"][0]["abstract_scheme"] == "fp8_dynamic"
+    assert pipe_manifest["stages"][1]["abstract_scheme"] == "w4_gptq"
+    assert artifact.output_dir == out / "stage2_gptq"
+
+
 # ---------------------------------------------------------------------------
 # Ascend / msmodelslim dry-run
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
-    ("recipe_name", "expected_scheme", "expected_quant_type"),
+    ("precision", "expected_scheme", "expected_quant_type"),
     [
-        ("ascend_qwen_w8a8.yaml", "ascend_w8a8", "w8a8"),
-        ("ascend_qwen_fp8_dynamic.yaml", "ascend_w8a8", "w8a8"),
-        ("ascend_qwen_fp8_block.yaml", "ascend_w4a8", "w4a8"),
+        ("w8a8", "ascend_w8a8", "w8a8"),
+        ("fp8_dynamic", "ascend_w8a8", "w8a8"),
+        ("fp8_block", "ascend_w4a8", "w4a8"),
     ],
 )
 def test_e2e_dry_run_ascend_msmodelslim_recipes(
     tmp_path: Path,
-    recipe_name: str,
+    precision: str,
     expected_scheme: str,
     expected_quant_type: str,
 ) -> None:
-    recipe = RECIPES / recipe_name
-    out = tmp_path / recipe_name.replace(".yaml", "")
+    recipe = materialize_recipe(
+        QWEN25_EXAMPLE,
+        tmp_path / f"qwen-{precision}.yaml",
+        precision=precision,
+    )
+    out = tmp_path / precision
     profile = "ascend_910b"
 
     plan = compile_plan(recipe, profile)

@@ -12,7 +12,7 @@ unset LUBAN_LLM_COMPRESSOR_DRY_RUN || true
 MODEL_PATH="${MODEL_PATH:-./llama3}"
 CALIB_PATH="${CALIB_PATH:-./open-perfectblend}"
 OUT="${OUT:-./out-h20-llama3-w4a16}"
-RECIPE_SRC="${ROOT}/luban_sculpt/recipes/h20_llama3_local_w4a16.yaml"
+RECIPE_SRC="${ROOT}/luban_sculpt/recipes/llama3.yaml"
 
 if [[ ! -d "${MODEL_PATH}" ]]; then
   echo "ERROR: model dir missing: ${MODEL_PATH}"
@@ -58,6 +58,7 @@ luban-sculpt probe --profile nvidia_h20
 luban-sculpt compress \
   --profile nvidia_h20 \
   --recipe "${TMP_RECIPE}" \
+  --precision w4a16 \
   --output "${OUT_ABS}"
 
 echo "done → ${OUT_ABS}"

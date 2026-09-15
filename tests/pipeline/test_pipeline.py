@@ -89,10 +89,21 @@ def test_pipeline_dry_run_multi_stage(tmp_path: Path) -> None:
 
     os.environ["LUBAN_LLM_COMPRESSOR_DRY_RUN"] = "1"
     os.environ["LUBAN_GPTQMODEL_DRY_RUN"] = "1"
-    recipe = RECIPES / "pipeline_llm_compressor_then_gptq.yaml"
+    import yaml
+
+    from luban_sculpt.pipeline.recipe_overrides import apply_recipe_cli_overrides
+
+    from luban_sculpt.compiler.recipe_compiler import load_recipe_yaml
+    from tests.paths import LLAMA3_EXAMPLE
+
+    recipe_doc = apply_recipe_cli_overrides(
+        load_recipe_yaml(LLAMA3_EXAMPLE, validate_model_layout=False),
+        pipeline_preset="fp8_then_gptq",
+        model_id="meta-llama/Llama-3.1-8B-Instruct",
+    )
     out = tmp_path / "out"
     pipe = QuantPipeline(profile_name="generic_cpu")
-    artifact = pipe.run(recipe, out)
+    artifact = pipe.run_recipe(recipe_doc, out)
     assert (out / "pipeline_manifest.json").is_file()
     assert (out / "stage1_fp8" / "manifest.json").is_file()
     assert (out / "stage2_gptq" / "manifest.json").is_file()
@@ -103,7 +114,9 @@ def test_single_recipe_still_works_via_pipeline(tmp_path: Path) -> None:
     import os
 
     os.environ["LUBAN_LLM_COMPRESSOR_DRY_RUN"] = "1"
-    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
+    from tests.paths import LLAMA3_EXAMPLE
+
+    recipe = LLAMA3_EXAMPLE
     out = tmp_path / "single"
     artifact = QuantPipeline(profile_name="nvidia_h20").run(recipe, out)
     assert artifact.output_dir.is_dir()
@@ -114,7 +127,9 @@ def test_pipeline_with_artifact_validate(tmp_path: Path) -> None:
     import os
 
     os.environ["LUBAN_LLM_COMPRESSOR_DRY_RUN"] = "1"
-    recipe = RECIPES / "h20_llama3_fp8_dynamic.yaml"
+    from tests.paths import LLAMA3_EXAMPLE
+
+    recipe = LLAMA3_EXAMPLE
     out = tmp_path / "validated"
     artifact = QuantPipeline(
         profile_name="nvidia_h20",

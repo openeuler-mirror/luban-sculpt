@@ -107,10 +107,12 @@ class BackendComposeStage(PipelineStage):
 
         for idx, stage in enumerate(stages):
             model_id = self._resolve_model_id(ctx, stage, base_model_id)
-            stage_out = self._stage_output_dir(ctx.output_dir, stage, idx)
             stage_recipe = build_stage_recipe(ctx.recipe, stage, model_id=model_id)
             plan = compile_recipe(stage_recipe, ctx.hw, ctx.profile)
-            if plan.intent.backend != stage.backend:
+            stage_out = self._stage_output_dir(
+                ctx.output_dir, stage, idx, resolved_backend=plan.intent.backend
+            )
+            if stage.backend != "auto" and plan.intent.backend != stage.backend:
                 plan.intent.backend = stage.backend
             if stage.algorithm:
                 plan.intent.backend_options.setdefault("algo", stage.algorithm)
@@ -172,9 +174,19 @@ class BackendComposeStage(PipelineStage):
         return str(prev)
 
     def _stage_output_dir(
-        self, root: Path, stage: QuantStageConfig, idx: int
+        self,
+        root: Path,
+        stage: QuantStageConfig,
+        idx: int,
+        *,
+        resolved_backend: str | None = None,
     ) -> Path:
-        sub = stage.output_subdir or f"stage_{idx}_{stage.backend}"
+        backend_label = (
+            resolved_backend
+            if stage.backend == "auto"
+            else stage.backend
+        )
+        sub = stage.output_subdir or f"stage_{idx}_{backend_label}"
         return root / sub
 
     def _write_stage_sidecar(
@@ -183,7 +195,8 @@ class BackendComposeStage(PipelineStage):
         meta = {
             "index": idx,
             "name": result.stage.name,
-            "backend": result.stage.backend,
+            "backend": result.plan.intent.backend,
+            "backend_recipe": result.stage.backend,
             "algorithm": result.stage.algorithm,
             "abstract_scheme": result.plan.intent.abstract_scheme,
             "export_format": result.plan.export_format.value,
@@ -200,7 +213,7 @@ class BackendComposeStage(PipelineStage):
             "stages": [
                 {
                     "name": r.stage.name,
-                    "backend": r.stage.backend,
+                    "backend": r.plan.intent.backend,
                     "algorithm": r.stage.algorithm,
                     "output_dir": str(r.output_dir),
                     "export_format": r.plan.export_format.value,

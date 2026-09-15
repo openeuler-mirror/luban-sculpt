@@ -27,6 +27,9 @@ hw_defaults:
 backends:
   msmodelslim:
     enabled: true
+    defaults:
+      device: npu
+      trust_remote_code: true
 schemes:
   ascend_w8a8:
     compress:

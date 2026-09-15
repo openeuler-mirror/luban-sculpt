@@ -13,7 +13,7 @@ export LUBAN_GPTQMODEL_DRY_RUN=1
 
 pip install -e "${ROOT}" -q
 
-echo "==> [1/3] probe --profile generic_cpu"
+echo "==> [1/4] probe --profile generic_cpu"
 luban-sculpt probe --profile generic_cpu | tee "${PROBE_JSON}"
 python3 - <<PY
 import json
@@ -26,12 +26,13 @@ assert "w4_gptq" in out["profile_keys"], out
 print("probe ok")
 PY
 
-echo "==> [2/3] compress dry-run (llama_fp8_dynamic)"
+echo "==> [2/4] compress dry-run (llama_fp8_dynamic)"
 rm -rf "${OUT}"
 COMPRESS_JSON="$(mktemp)"
 luban-sculpt compress \
   --profile generic_cpu \
-  --recipe "${ROOT}/luban_sculpt/recipes/llama_fp8_dynamic.yaml" \
+  --recipe "${ROOT}/luban_sculpt/recipes/llama3.yaml" \
+  --model-id meta-llama/Llama-3.1-8B-Instruct \
   --output "${OUT}" | tee "${COMPRESS_JSON}"
 
 python3 - <<PY
@@ -51,11 +52,13 @@ print("single compress dry-run ok:", stage)
 print("files:", sorted(p.name for p in stage.iterdir()))
 PY
 
-echo "==> [3/3] pipeline dry-run (fp8 → gptq)"
+echo "==> [3/4] pipeline dry-run (fp8 → gptq preset)"
 rm -rf "${PIPE_OUT}"
 luban-sculpt compress \
   --profile generic_cpu \
-  --recipe "${ROOT}/luban_sculpt/recipes/pipeline_llm_compressor_then_gptq.yaml" \
+  --recipe "${ROOT}/luban_sculpt/recipes/llama3.yaml" \
+  --pipeline-preset fp8_then_gptq \
+  --model-id meta-llama/Llama-3.1-8B-Instruct \
   --output "${PIPE_OUT}" > /dev/null
 
 python3 - <<PY
@@ -75,6 +78,27 @@ assert m2["backend"] == "gptq"
 print("pipeline dry-run ok")
 PY
 
+echo "==> [4/4] pipeline dry-run (packaged llama3_fp8_then_gptq.yaml)"
+PACKAGED_OUT="${PACKAGED_OUT:-/tmp/luban_cpu_packaged_two_stage}"
+rm -rf "${PACKAGED_OUT}"
+luban-sculpt compress \
+  --profile generic_cpu \
+  --recipe "${ROOT}/luban_sculpt/recipes/llama3_fp8_then_gptq.yaml" \
+  --output "${PACKAGED_OUT}" > /dev/null
+
+python3 - <<PY
+import json
+from pathlib import Path
+root = Path("${PACKAGED_OUT}")
+pm = json.loads((root / "pipeline_manifest.json").read_text(encoding="utf-8"))
+assert len(pm["stages"]) == 2, pm
+assert pm["stages"][0]["backend"] == "llm_compressor"
+assert pm["stages"][1]["backend"] == "gptq"
+assert (root / "stage2_gptq" / "manifest.json").is_file()
+print("packaged two-stage recipe dry-run ok")
+PY
+
 echo "CPU dry-run example passed."
-echo "  single:   ${OUT}"
-echo "  pipeline: ${PIPE_OUT}"
+echo "  single:    ${OUT}"
+echo "  pipeline:  ${PIPE_OUT}"
+echo "  packaged:  ${PACKAGED_OUT}"

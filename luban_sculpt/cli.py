@@ -16,7 +16,9 @@ from luban_sculpt.log import (
 )
 from luban_sculpt.backends.base import BackendRegistry
 from luban_sculpt.hae.engine import HardwareAwareEngine
+from luban_sculpt.compiler.recipe_compiler import load_recipe_yaml
 from luban_sculpt.pipeline import QuantPipeline
+from luban_sculpt.pipeline.recipe_overrides import apply_recipe_cli_overrides
 from luban_sculpt.validate.hf_config import validate_hf_config
 from luban_sculpt.validate.runtime import RuntimeMode, validate_runtime
 
@@ -32,6 +34,22 @@ def _cmd_probe(args: argparse.Namespace) -> int:
     except Exception:
         logger.error("probe failed profile=%s", args.profile, exc_info=True)
         return 1
+    precision = getattr(args, "precision", None) or "fp8_dynamic"
+    backend_hint = getattr(args, "backend", None) or "auto"
+    try:
+        route = hae.suggest_compress_route(
+            precision=precision,
+            backend_hint=backend_hint,
+            profile=profile,
+        )
+        route_json = {
+            "precision": route.precision,
+            "abstract_scheme": route.abstract_scheme,
+            "backend": route.backend,
+            "infer_runtime": route.infer_runtime,
+        }
+    except Exception as exc:
+        route_json = {"error": str(exc)}
     out = {
         "profile_id": hw.profile_id,
         "vendor": hw.vendor,
@@ -39,6 +57,7 @@ def _cmd_probe(args: argparse.Namespace) -> int:
         "missing_ops": probe.missing_ops,
         "hw_decision": hw.model_dump(mode="json"),
         "profile_keys": list(profile.get("schemes", {}).keys()),
+        "suggest_compress_route": route_json,
     }
     if not probe.ok:
         logger.error("probe not ok missing_ops=%s", probe.missing_ops)
@@ -57,6 +76,26 @@ def _cmd_compress(args: argparse.Namespace) -> int:
         args.output,
     )
     try:
+        recipe_path = Path(args.recipe)
+        recipe = load_recipe_yaml(recipe_path)
+        ignore_raw = getattr(args, "ignore", None)
+        ignore_list = (
+            [x.strip() for x in ignore_raw.split(",") if x.strip()]
+            if ignore_raw
+            else None
+        )
+        recipe = apply_recipe_cli_overrides(
+            recipe,
+            model_id=getattr(args, "model_id", None),
+            model_dir=getattr(args, "model_dir", None),
+            validate_model_layout=not getattr(args, "skip_model_layout_check", False),
+            precision=getattr(args, "precision", None),
+            abstract_scheme=getattr(args, "scheme", None),
+            backend=getattr(args, "backend", None),
+            ignore=ignore_list,
+            calib_preset=getattr(args, "calib_preset", None),
+            pipeline_preset=getattr(args, "pipeline_preset", None),
+        )
         pipe = QuantPipeline(
             profile_name=args.profile,
             validate_quantized_model=bool(
@@ -65,7 +104,7 @@ def _cmd_compress(args: argparse.Namespace) -> int:
             validate_runtime=bool(getattr(args, "validate_runtime", False)),
             runtime_mode=getattr(args, "runtime_mode", None) or "import",
         )
-        artifact = pipe.run(Path(args.recipe), Path(args.output))
+        artifact = pipe.run_recipe(recipe, Path(args.output))
     except Exception:
         logger.error(
             "compress failed profile=%s recipe=%s output=%s",
@@ -193,12 +232,69 @@ def main(argv: list[str] | None = None) -> int:
 
     probe_parser = sub.add_parser("probe", help="HAE detect + profile probe")
     probe_parser.add_argument("--profile", default="auto")
+    probe_parser.add_argument(
+        "--precision",
+        default="fp8_dynamic",
+        help="Suggest route for this precision (with --profile auto)",
+    )
+    probe_parser.add_argument(
+        "--backend",
+        default="auto",
+        help="Backend hint: auto or llm_compressor / msmodelslim / …",
+    )
     probe_parser.set_defaults(func=_cmd_probe)
 
     compress_parser = sub.add_parser("compress", help="Run quant pipeline (stub HAL + manifest)")
     compress_parser.add_argument("--recipe", required=True)
     compress_parser.add_argument("--output", required=True)
     compress_parser.add_argument("--profile", default="auto")
+    compress_parser.add_argument(
+        "--precision",
+        default=None,
+        help="Override recipe stage precision (e.g. fp8_dynamic, w8a8)",
+    )
+    compress_parser.add_argument(
+        "--scheme",
+        default=None,
+        help="Override abstract_scheme on first pipeline stage",
+    )
+    compress_parser.add_argument(
+        "--backend",
+        default=None,
+        help="Override compress backend (default: recipe or auto from profile)",
+    )
+    compress_parser.add_argument(
+        "--model-id",
+        default=None,
+        help="Override model.path / model_id (Hub ID or local directory)",
+    )
+    compress_parser.add_argument(
+        "--model-dir",
+        default=None,
+        help="Local HF weights directory (sets model.path; same effect as --model-id for dirs)",
+    )
+    compress_parser.add_argument(
+        "--skip-model-layout-check",
+        action="store_true",
+        help="Skip hf_pretrained layout validation on local model.path",
+    )
+    compress_parser.add_argument(
+        "--ignore",
+        default=None,
+        help="Comma-separated ignore patterns (replace stage ignore)",
+    )
+    compress_parser.add_argument(
+        "--calib-preset",
+        default=None,
+        choices=["standard", "fast", "stub"],
+        help="Merge calib + compress tuning preset (standard / fast / stub)",
+    )
+    compress_parser.add_argument(
+        "--pipeline-preset",
+        default=None,
+        choices=["fp8_then_gptq"],
+        help="Replace pipeline stages (e.g. fp8_then_gptq two-stage chain)",
+    )
     compress_parser.add_argument(
         "--validate-quantized-model",
         action="store_true",
