@@ -13,5 +13,7 @@ luban_sculpt.egg-info/
 dist/
 build/
 *.egg
-.cursor/
+
+# Local runtime / IDE
 logs/
+.cursor/
