@@ -1,8 +1,6 @@
-# 通用量化模板（由 recipes/* 通过 extends: quant 引用）
-# 勿直接填具体模型；用 model.path / model.arch 在具体 recipe 里覆盖。
-
 model:
   path: ./model
+  # arch: llama
   layout: hf_pretrained
 
 pipeline:
@@ -10,17 +8,35 @@ pipeline:
     - name: default
       backend: auto
       precision: fp8_dynamic
+      # abstract_scheme: fp8_dynamic
       ignore:
         - lm_head
+      # input_from: recipe
+      # output_subdir: stage_0_auto
+      # enabled: true
       compress:
         modifiers:
           - name: QuantizationPatch
             mode: patch
+        # observer:
+        #   weights: luban_ema_absmax
+        #   input: minmax
+        #   output: minmax
+      # backend_options: {}
+      # llm_compressor: {}
+      # msmodelslim: {}
+      # gptq: {}
 
 calib:
   source: stub
+  # path: ./open-perfectblend
   max_samples: 128
   batch_size: 1
   max_seq_length: 512
+  # max_chars: 2048
+  # split: train
+  # text_column: text
+  # shuffle: true
+  # seed: 42
   distributed: false
   world_size: 1
