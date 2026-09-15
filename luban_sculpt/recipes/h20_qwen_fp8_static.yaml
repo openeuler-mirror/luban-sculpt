@@ -1,0 +1,36 @@
+# Qwen2.5-7B — FP8 静态量化（W8A8，激活 scale 由校准集离线统计后写死进产物）
+#
+# 依赖 profiles/nvidia_h20.yaml 的 schemes.fp8_static（default_scheme: FP8）。
+#
+#   luban-sculpt compress --profile nvidia_h20 \
+#     --recipe luban_sculpt/recipes/h20_qwen_fp8_static.yaml \
+#     --output /data/luban-qwen7b-test/current_output/qwen2.5-7b-fp8-static
+#
+# 模型目录不同用 --model-dir 覆盖，不必改本文件。
+
+extends: quant
+
+model:
+  path: /data/Qwen2.5-7B-Instruct
+  arch: qwen
+  layout: hf_pretrained
+
+calib:
+  source: open-perfectblend
+  split: train
+  max_samples: 128
+  max_seq_length: 2048
+  max_chars: 8192
+  batch_size: 1
+  shuffle: true
+  seed: 42
+  
+pipeline:
+  stages:
+    - name: fp8_static
+      precision: fp8_static
+      ignore:
+        - lm_head
+      llm_compressor:
+        torch_dtype: bfloat16
+
