@@ -42,6 +42,7 @@ _SCHEME_EXPORT_OVERRIDE: dict[str, ExportFormat] = {
     "w8a8_int8": ExportFormat.COMPRESSED_TENSORS,
     "w8a8_mxfp8": ExportFormat.COMPRESSED_TENSORS,
     "fp8_dynamic": ExportFormat.COMPRESSED_TENSORS,
+    "fp8_static": ExportFormat.COMPRESSED_TENSORS,
     "fp8_block": ExportFormat.COMPRESSED_TENSORS,
     "nvfp4": ExportFormat.COMPRESSED_TENSORS,
     "fp8_hf": ExportFormat.FP8_HF,

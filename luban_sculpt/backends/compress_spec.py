@@ -22,6 +22,7 @@ _ABSTRACT_TO_SCHEME: dict[str, str] = {
     "w4a8_fp8": "W4AFP8",
     "w8a8_fp8": "FP8_DYNAMIC",
     "fp8_dynamic": "FP8_DYNAMIC",
+    "fp8_static": "FP8",
     "w8a8_int8": "W8A8",
     "w8a8_mxfp8": "MXFP8",
     "fp8_block": "FP8_BLOCK",

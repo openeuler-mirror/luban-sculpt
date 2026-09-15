@@ -53,6 +53,16 @@ schemes:
       kernel_whitelist:
         - cutlass_fp8
         - scaled_mm_fp8
+  fp8_static:
+    compress:
+      backend: llm_compressor
+      export: compressed-tensors
+      default_scheme: FP8
+    infer:
+      infer_runtime: vllm_cuda
+      kernel_whitelist:
+        - cutlass_fp8
+        - scaled_mm_fp8
   fp8_block:
     compress:
       backend: llm_compressor
