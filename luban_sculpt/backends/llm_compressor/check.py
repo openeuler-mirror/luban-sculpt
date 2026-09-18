@@ -1,4 +1,4 @@
-"""llm-compressor availability probe — quiet, cached (Intel Mac / old torch may fail)."""
+"""llm-compressor 导入检测（静默、缓存；旧 torch / 无 GPU 栈可能 import 失败）。"""
 
 from __future__ import annotations
 
@@ -11,14 +11,18 @@ from luban_sculpt.log import get_logger
 
 logger = get_logger(__name__)
 
-_STATE: dict[str, Any] | None = None
+_LC_STATE: dict[str, Any] | None = None
 
 
-def probe_llm_compressor() -> dict[str, Any]:
-    """Import llmcompressor once; swallow stdout/stderr/warnings from broken stacks."""
-    global _STATE
-    if _STATE is not None:
-        return _STATE
+def get_llm_compressor_state() -> dict[str, Any]:
+    """获取 llmcompressor 导入结果（懒加载、模块内缓存）；失败不抛错。
+
+    常见键：``available``、``QuantizationModifier``、``error``；
+    ``register_luban_llm_compressor_modifiers()`` 还会在成功时写入 Luban* 类。
+    """
+    global _LC_STATE
+    if _LC_STATE is not None:
+        return _LC_STATE
 
     buf = io.StringIO()
     with warnings.catch_warnings():
@@ -32,7 +36,7 @@ def probe_llm_compressor() -> dict[str, Any]:
                 from llmcompressor.modifiers.quantization import QuantizationModifier
                 import luban_sculpt.observers  # noqa: F401 — register custom observers
 
-                _STATE = {
+                _LC_STATE = {
                     "available": True,
                     "oneshot": oneshot,
                     "Event": Event,
@@ -40,26 +44,34 @@ def probe_llm_compressor() -> dict[str, Any]:
                     "Modifier": Modifier,
                     "QuantizationModifier": QuantizationModifier,
                 }
-            except Exception as exc:  # noqa: BLE001 — probe must never raise
-                _STATE = {"available": False, "error": repr(exc)}
-    return _STATE
+            except Exception as exc:  # noqa: BLE001 — import 检测不得 raise
+                _LC_STATE = {"available": False, "error": repr(exc)}
+    return _LC_STATE
 
 
 def is_llm_compressor_available() -> bool:
-    return bool(probe_llm_compressor().get("available"))
+    return bool(get_llm_compressor_state().get("available"))
 
 
-def ensure_llm_compressor_modifier_classes() -> dict[str, Any]:
-    """Lazily define Luban* Modifier subclasses when llmcompressor is importable."""
-    probe_state = probe_llm_compressor()
-    if not probe_state.get("available"):
-        return probe_state
-    if "LubanHALCalibModifier" in probe_state:
-        return probe_state
+def get_llm_compressor_quantization_modifier_class() -> type[Any] | None:
+    """LC 可用时返回 ``QuantizationModifier`` 类，否则 ``None``。"""
+    state = get_llm_compressor_state()
+    if not state.get("available"):
+        return None
+    return state["QuantizationModifier"]
 
-    modifier_base = probe_state["Modifier"]
-    lc_state_cls = probe_state["State"]
-    lc_event_cls = probe_state["Event"]
+
+def register_luban_llm_compressor_modifiers() -> dict[str, Any]:
+    """LC 可用时注册 Luban* Modifier 子类到 state；返回 ``get_llm_compressor_state()``。"""
+    state = get_llm_compressor_state()
+    if not state.get("available"):
+        return state
+    if "LubanHALCalibModifier" in state:
+        return state
+
+    modifier_base = state["Modifier"]
+    lc_state_cls = state["State"]
+    lc_event_cls = state["Event"]
 
     class LubanHALCalibModifier(modifier_base):
         """校准开始/结束时写入 HAL 选中的 kernel（挂到 state.metadata）。"""
@@ -102,6 +114,6 @@ def ensure_llm_compressor_modifier_classes() -> dict[str, Any]:
                 meta["luban_producer"] = dict(self.producer)
             return True
 
-    probe_state["LubanHALCalibModifier"] = LubanHALCalibModifier
-    probe_state["LubanProducerMetadataModifier"] = LubanProducerMetadataModifier
-    return probe_state
+    state["LubanHALCalibModifier"] = LubanHALCalibModifier
+    state["LubanProducerMetadataModifier"] = LubanProducerMetadataModifier
+    return state

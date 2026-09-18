@@ -20,12 +20,12 @@ def run_pre_oneshot(plan: BackendPlan) -> Any:
         plan.intent.abstract_scheme,
         plan.hw.profile_id,
     )
-    from luban_sculpt.modifiers.recipe import LLMCompressorModifierManager
+    from luban_sculpt.modifiers.manager import LLMCompressorModifierManager
 
     manager = LLMCompressorModifierManager(plan)
-    specs = manager.specs_from_plan()
-    if specs:
-        logger.info("modifier chain: %s", [s.get("name") for s in specs])
+    chain_specs = manager.modifier_chain_specs()
+    if chain_specs:
+        logger.info("modifier chain: %s", [s.get("name") for s in chain_specs])
     return manager
 
 

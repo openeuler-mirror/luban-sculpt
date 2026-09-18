@@ -1,4 +1,4 @@
-"""Modifier 注册：entry_points + builtins。"""
+"""Modifier 注册：entry_points + 内置 chain 插件。"""
 
 from __future__ import annotations
 
@@ -10,12 +10,12 @@ ModifierClass = Type[Any]
 _BUILTIN: dict[str, ModifierClass] | None = None
 
 
-def _builtins() -> dict[str, ModifierClass]:
+def _builtin_chain_modifiers() -> dict[str, ModifierClass]:
     global _BUILTIN
     if _BUILTIN is None:
-        from luban_sculpt.modifiers.builtins import BUILTIN_MODIFIERS
+        from luban_sculpt.modifiers.chain_modifiers import BUILTIN_CHAIN_MODIFIERS
 
-        _BUILTIN = BUILTIN_MODIFIERS
+        _BUILTIN = BUILTIN_CHAIN_MODIFIERS
     return _BUILTIN
 
 
@@ -34,9 +34,9 @@ def resolve_modifier_class(name: str) -> ModifierClass | None:
     discovered = discover_modifier_classes()
     if name in discovered:
         return discovered[name]
-    return _builtins().get(name)
+    return _builtin_chain_modifiers().get(name)
 
 
 def list_modifier_names() -> list[str]:
-    names = set(_builtins()) | set(discover_modifier_classes())
+    names = set(_builtin_chain_modifiers()) | set(discover_modifier_classes())
     return sorted(names)
