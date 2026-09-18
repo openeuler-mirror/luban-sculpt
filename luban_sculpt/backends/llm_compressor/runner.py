@@ -17,7 +17,7 @@ from luban_sculpt.backends.base import QuantBackend
 from luban_sculpt.backends.llm_compressor.check import is_llm_compressor_available
 from luban_sculpt.backends.oneshot_hooks import run_post_oneshot, run_pre_oneshot
 from luban_sculpt.contracts import QuantizedArtifact
-from luban_sculpt.modifiers.recipe import build_recipe_for_plan
+from luban_sculpt.modifiers.manager import build_recipe_for_plan
 from luban_sculpt.backends.compress_spec import resolve_compress_spec
 from luban_sculpt.calib import CalibRunner
 from luban_sculpt.contracts import BackendPlan
