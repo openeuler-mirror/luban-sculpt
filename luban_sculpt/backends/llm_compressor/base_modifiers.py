@@ -5,8 +5,11 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from luban_sculpt.backends.llm_compressor.check import probe_llm_compressor
 from luban_sculpt.backends.compress_spec import resolve_compress_spec
+from luban_sculpt.backends.llm_compressor.check import (
+    is_llm_compressor_available,
+    get_llm_compressor_quantization_modifier_class,
+)
 from luban_sculpt.contracts import BackendPlan
 from luban_sculpt.log import get_logger
 
@@ -62,26 +65,36 @@ def _extract_observer_overrides(lc: dict[str, Any]) -> dict[str, Any]:
     return individual
 
 
-
 def build_base_modifiers(plan: BackendPlan) -> list[Any]:
-    """按 abstract_scheme / CompressSpec 生成 GPTQ、AWQ 或 QuantizationModifier。"""
+    """从 ``BackendPlan`` 组装 base modifier 链（供 ``ModifierManager.base_builder``）。
+
+    解析 scheme/targets/ignore 后二选一：
+
+    - **dry-run**（无 LC 或仅编排验证）→ ``_build_base_modifiers_dry_run``
+    - **真实 oneshot** → ``_build_base_modifiers_instances``
+    """
     opts = plan.intent.backend_options or {}
     lc = opts.get("llm_compressor") or opts
     spec = resolve_compress_spec(plan.intent.abstract_scheme, compressor_options=lc)
     targets = lc.get("targets", "Linear")
     ignore = plan.intent.ignore or lc.get("ignore") or ["lm_head"]
 
-    state = probe_llm_compressor()
-    if not state.get("available"):
-        return _stub_modifiers(spec, targets, ignore, lc)
+    if not is_llm_compressor_available():
+        return _build_base_modifiers_dry_run(spec, targets, ignore, lc)
 
-    return _live_modifiers(state, spec, targets, ignore, lc)
+    quant_mod_cls = get_llm_compressor_quantization_modifier_class()
+    if quant_mod_cls is None:
+        return _build_base_modifiers_dry_run(spec, targets, ignore, lc)
+
+    return _build_base_modifiers_instances(
+        quant_mod_cls, spec, targets, ignore, lc
+    )
 
 
-def _stub_modifiers(
+def _build_base_modifiers_dry_run(
     spec: Any, targets: Any, ignore: list[str], lc: dict[str, Any]
 ) -> list[Any]:
-    """无 llmcompressor 时的 JSON 可序列化 stub（dry-run）。"""
+    """``build_base_modifiers`` dry-run：可序列化 dict 链（与 instances 同 algorithm 分支）。"""
     observer_overrides = _extract_observer_overrides(lc)
     if spec.algorithm == "gptq":
         body: dict[str, Any] = {
@@ -138,14 +151,14 @@ def _filter_kwargs(cls: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
         return kwargs
 
 
-def _live_modifiers(
-    state: dict[str, Any],
+def _build_base_modifiers_instances(
+    quantization_modifier: type[Any],
     spec: Any,
     targets: Any,
     ignore: list[str],
     lc: dict[str, Any],
 ) -> list[Any]:
-    quantization_modifier = state["QuantizationModifier"]
+    """``build_base_modifiers`` 真实 oneshot：llmcompressor Modifier 实例链。"""
     observer_overrides = _extract_observer_overrides(lc)
     if spec.algorithm == "gptq":
         gptq_modifier = _import_gptq()

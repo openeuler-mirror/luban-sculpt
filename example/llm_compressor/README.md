@@ -8,7 +8,7 @@
 
 ```
 Recipe YAML
-  → build_base_modifiers()     # QuantizationModifier(scheme=FP8_DYNAMIC, ...)
+  → build_base_modifiers()     # backends/llm_compressor/base_modifiers.py
   → ModifierManager.apply()    # 国产 Modifier：prepend / append / wrap / replace
   → oneshot(model, recipe)
   → save_pretrained + manifest
@@ -41,9 +41,9 @@ pipeline:
 
 | name | 作用 |
 |------|------|
-| `HALCalibHook` | 按 Profile/HwDecision 选择 HAL 校准 kernel（不改 LC 链） |
-| `DomesticFakeQuant` | 插入或占位 `QuantizationModifier` |
-| `AscendFp8Block` | `FP8_BLOCK`（x86/实验，非 Ascend 910B 主路径） |
+| `HALCalibHook` | 按 Profile 选择 HAL 校准 kernel，prepend/append LC metadata Modifier |
+| `QuantizationPatch` | patch 链上 `QuantizationModifier`（见 `templates/quant.yaml`） |
+| `DomesticFakeQuant` | 追加一层 `QuantizationModifier`（scheme 可覆盖） |
 
 扩展：在自己的包里实现 Modifier，并在 `pyproject.toml` 注册  
 `[project.entry-points."luban_sculpt.modifiers"]`（由 `modifier_registry.discover_modifier_classes` 加载）。

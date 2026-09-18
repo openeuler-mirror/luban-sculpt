@@ -1,4 +1,4 @@
-"""Modifier 链编排：base chain → 插件 intercept → finalize recipe。"""
+"""Modifier 链编排：base chain → 插件 apply_to_chain → finalize recipe。"""
 
 from __future__ import annotations
 
@@ -43,8 +43,11 @@ class ModifierManager:
     finalizer: RecipeFinalizer | None = None
     log: list[str] = field(default_factory=list)
 
-    def specs_from_plan(self) -> list[dict[str, Any]]:
-        """从 plan 解析 modifier 规格列表（name/mode/参数）。"""
+    def modifier_chain_specs(self) -> list[dict[str, Any]]:
+        """Recipe ``compress.modifiers`` 编译进 plan 后的链配置（每项含 name/mode/参数）。
+
+        读取 ``intent.backend_options["modifiers"]``（兼容旧键 ``modifier_chain``）。
+        """
         opts = self.plan.intent.backend_options or {}
         raw = opts.get("modifiers") or opts.get("modifier_chain") or []
         if isinstance(raw, dict):
@@ -52,14 +55,14 @@ class ModifierManager:
         return list(raw)
 
     def apply(self, base_modifiers: list[Any] | None = None) -> list[Any]:
-        """依次调用各 Modifier.intercept，合并为最终链。"""
+        """依次调用各 Modifier.apply_to_chain，合并为最终链。"""
         if base_modifiers is not None:
             chain = list(base_modifiers)
         elif self.base_builder is not None:
             chain = list(self.base_builder(self.plan))
         else:
             chain = []
-        for spec in self.specs_from_plan():
+        for spec in self.modifier_chain_specs():
             name = spec.get("name") or spec.get("modifier")
             if not name:
                 continue
@@ -68,8 +71,8 @@ class ModifierManager:
                 logger.warning("unknown modifier %s, skip", name)
                 continue
             inst = cls()
-            chain = inst.intercept(chain, self.plan, spec)
-            self.log.append(f"intercept:{name}:mode={spec.get('mode', 'append')}")
+            chain = inst.apply_to_chain(chain, self.plan, spec)
+            self.log.append(f"apply_to_chain:{name}:mode={spec.get('mode', 'append')}")
         return chain
 
     def build_recipe(self) -> tuple[Any, list[Any], list[str]]:
@@ -79,3 +82,27 @@ class ModifierManager:
     def finalize_recipe(self, modifiers: list[Any]) -> Any:
         fin = self.finalizer or default_finalize_recipe
         return fin(modifiers)
+
+
+class LLMCompressorModifierManager(ModifierManager):
+    """默认注入 llm-compressor base_builder / finalizer 的 Manager。"""
+
+    def __init__(self, plan: BackendPlan, **kwargs: Any) -> None:
+        from luban_sculpt.backends.llm_compressor.base_modifiers import (
+            build_base_modifiers,
+        )
+
+        kwargs.setdefault("base_builder", build_base_modifiers)
+        kwargs.setdefault("finalizer", default_finalize_recipe)
+        super().__init__(plan, **kwargs)
+
+
+def build_recipe_for_plan(plan: BackendPlan) -> tuple[Any, dict[str, Any]]:
+    """ModifierManager 构建 llm-compressor Recipe，并返回拦截日志元数据。"""
+    manager = LLMCompressorModifierManager(plan)
+    recipe, modifiers, log = manager.build_recipe()
+    return recipe, {
+        "interceptor_log": log,
+        "modifier_count": len(modifiers),
+        "modifier_types": [type(m).__name__ for m in modifiers],
+    }

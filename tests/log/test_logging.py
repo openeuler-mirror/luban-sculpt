@@ -98,10 +98,10 @@ def test_default_log_format_unchanged() -> None:
 
 def test_modules_use_get_logger_api() -> None:
     from luban_sculpt.backends.base import logger as base_logger
-    from luban_sculpt.modifiers.builtins import logger as builtins_logger
+    from luban_sculpt.modifiers.chain_modifiers import logger as chain_modifiers_logger
     from luban_sculpt.model.resolve import logger as resolve_logger
 
-    for log in (base_logger, builtins_logger, resolve_logger):
+    for log in (base_logger, chain_modifiers_logger, resolve_logger):
         assert isinstance(log, logging.Logger)
         assert log.name.startswith("luban_sculpt.")
 

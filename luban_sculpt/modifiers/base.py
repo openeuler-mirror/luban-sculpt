@@ -7,18 +7,12 @@ from typing import Any
 from luban_sculpt.contracts import BackendPlan
 
 
-def _llm_compressor_available() -> bool:
-    from luban_sculpt.backends.llm_compressor.check import is_llm_compressor_available
-
-    return is_llm_compressor_available()
-
-
 class ChainModifier:
     """Recipe YAML 驱动的链式 hook（不必继承后端原生 Modifier）。"""
 
     name: str = "ChainModifier"
 
-    def intercept(
+    def apply_to_chain(
         self,
         modifiers: list[Any],
         plan: BackendPlan,
@@ -26,8 +20,7 @@ class ChainModifier:
     ) -> list[Any]:
         """按 spec.mode（append/prepend/replace/patch/wrap）插入或改写 modifier 链。"""
         mode = spec.get("mode", "append")
-        # 优先走 build_lc_modifier，兼容只覆盖旧方法名的子类
-        built = self.build_lc_modifier(plan, spec)
+        built = self.build_modifier(plan, spec)
         if built is None and mode != "patch":
             return self.patch_existing(modifiers, plan, spec)
 
@@ -47,10 +40,6 @@ class ChainModifier:
         """构建要插入链上的对象；默认无。"""
         return None
 
-    # 兼容旧名
-    def build_lc_modifier(self, plan: BackendPlan, spec: dict[str, Any]) -> Any | None:
-        return self.build_modifier(plan, spec)
-
     def patch_existing(
         self,
         modifiers: list[Any],
@@ -58,13 +47,15 @@ class ChainModifier:
         spec: dict[str, Any],
     ) -> list[Any]:
         """就地改写链上 QuantizationModifier 等（llm-compressor）。"""
-        if not _llm_compressor_available():
-            return modifiers
-        from luban_sculpt.backends.llm_compressor.check import probe_llm_compressor
+        from luban_sculpt.backends.llm_compressor.check import (
+            get_llm_compressor_quantization_modifier_class,
+        )
 
-        quantization_modifier = probe_llm_compressor()["QuantizationModifier"]
+        quant_mod_cls = get_llm_compressor_quantization_modifier_class()
+        if quant_mod_cls is None:
+            return modifiers
         for mod in modifiers:
-            if isinstance(mod, quantization_modifier):
+            if isinstance(mod, quant_mod_cls):
                 if spec.get("scheme"):
                     mod.scheme = spec["scheme"]
                 if spec.get("targets"):
@@ -82,10 +73,6 @@ class ChainModifier:
         return modifiers
 
 
-# 兼容旧类名
-LubanChainHook = ChainModifier
-
-
 class WrapModifier:
     def __init__(self, outer: Any, inner: Any) -> None:
         self.outer = outer
@@ -93,7 +80,3 @@ class WrapModifier:
 
     def __repr__(self) -> str:
         return f"WrapModifier({self.outer!r}, {self.inner!r})"
-
-
-# 兼容旧类名
-LubanWrapModifier = WrapModifier
