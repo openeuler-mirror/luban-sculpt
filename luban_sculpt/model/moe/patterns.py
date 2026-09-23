@@ -12,17 +12,20 @@ HF_MODEL_TYPE_MAP: dict[str, ModelArch] = {
     "qwen3_moe": ModelArch.QWEN_MOE,
     "deepseek_v2": ModelArch.DEEPSEEK_MOE,
     "deepseek_v3": ModelArch.DEEPSEEK_MOE,
+    "kimi_linear": ModelArch.KIMI_LINEAR,
 }
 
 ARCH_PATTERNS: list[tuple[re.Pattern[str], ModelArch]] = [
     (re.compile(r"Qwen2Moe|Qwen3Moe", re.I), ModelArch.QWEN_MOE),
     (re.compile(r"DeepseekV[23]|DeepSeekMoe", re.I), ModelArch.DEEPSEEK_MOE),
     (re.compile(r"Mixtral", re.I), ModelArch.MIXTRAL),
+    (re.compile(r"KimiLinear", re.I), ModelArch.KIMI_LINEAR),
 ]
 
 ID_PATTERNS: list[tuple[re.Pattern[str], ModelArch]] = [
     (re.compile(r"qwen3?[\W_]*moe|moe[\W_]*qwen", re.I), ModelArch.QWEN_MOE),
     (re.compile(r"deepseek[\W_]*v[23]|deepseek[\W_]*moe", re.I), ModelArch.DEEPSEEK_MOE),
     (re.compile(r"mixtral", re.I), ModelArch.MIXTRAL),
+    (re.compile(r"kimi[\W_]*linear", re.I), ModelArch.KIMI_LINEAR),
     (re.compile(r"[\W_]moe[\W_]|moe-", re.I), ModelArch.MOE_GENERIC),
 ]

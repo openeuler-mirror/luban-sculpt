@@ -25,6 +25,7 @@ class ModelArch(str, Enum):
     QWEN_MOE = "qwen_moe"
     DEEPSEEK_MOE = "deepseek_moe"
     MIXTRAL = "mixtral"
+    KIMI_LINEAR = "kimi_linear"
     MOE_GENERIC = "moe_generic"
 
     UNKNOWN = "unknown"
@@ -35,6 +36,7 @@ MOE_ARCHES: FrozenSet[ModelArch] = frozenset(
         ModelArch.QWEN_MOE,
         ModelArch.DEEPSEEK_MOE,
         ModelArch.MIXTRAL,
+        ModelArch.KIMI_LINEAR,
         ModelArch.MOE_GENERIC,
     }
 )

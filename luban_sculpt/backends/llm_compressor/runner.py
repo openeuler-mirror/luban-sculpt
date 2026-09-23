@@ -296,6 +296,11 @@ def run_llm_compressor_oneshot(
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        # KIMI_PROCESSOR_FIX
+        if model.__class__.__name__ == "KimiLinearForCausalLM":
+            oneshot_kwargs["processor"] = tokenizer
+            oneshot_kwargs["trust_remote_code_model"] = True
+
         oneshot(model=model, recipe=recipe, **oneshot_kwargs)
     except Exception:
         logger.exception(

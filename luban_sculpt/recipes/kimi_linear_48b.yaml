@@ -1,0 +1,44 @@
+# Kimi-Linear-48B-A3B-Instruct — KDA linear attention + MoE（block_sparse_moe 风格）
+#
+# 架构自动识别为 kimi_linear（MoE），自动不量化：
+#   router ``...block_sparse_moe.gate``、共享专家 ``...block_sparse_moe.shared_experts``、
+#   MLA ``...kv_a_proj_with_mqa``；并启用 expert_aware、calib 样本 2x。
+#
+# H20 (llm_compressor)：FP8_DYNAMIC → compressed-tensors，vLLM (CUDA) 推理
+#   luban-sculpt compress --profile nvidia_h20 \
+#     --recipe luban_sculpt/recipes/kimi_linear_48b.yaml \
+#     --output ./out-kimi-fp8-dynamic
+#
+# 变体（H20）：
+#   ... --precision fp8_block --output ./out-kimi-fp8-block
+#   ... --precision w8a8     --output ./out-kimi-w8a8
+#
+# 权重目录默认取相对路径 ./Kimi-Linear-48B-A3B-Instruct；路径不同用 --model-dir 覆盖，
+# 不必改本文件：
+#   ... --model-dir /path/to/Kimi-Linear-48B-A3B-Instruct
+#
+# 说明：48B 权重 bf16 ≈ 90+GB，单卡 H20 放不下，需多卡可见（device_map=auto 分片）。GPU内存不够，且只有单卡，可以device_map=cpu
+#
+extends: quant
+
+model:
+  path: ./Kimi-Linear-48B-A3B-Instruct
+  arch: kimi_linear
+  layout: hf_pretrained
+
+pipeline:
+  stages:
+    - compress:
+        trust_remote_code: true
+        device_map: cpu
+        observer:
+          weights: luban_ema_absmax
+          input: minmax
+
+calib:
+  source: perfectblend
+  max_samples: 128        # kimi_linear 策略 calib_samples_factor=2.0 → 实际 256
+  batch_size: 1
+  max_seq_length: 512
+  distributed: false
+  world_size: 1
