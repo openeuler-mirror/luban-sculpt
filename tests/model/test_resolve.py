@@ -83,6 +83,13 @@ def test_mixtral_moe_ignore_gate() -> None:
     assert "re:.*block_sparse_moe\\.gate$" in ignore
 
 
+def test_kimi_linear_ignore_matches_hf_router_and_shared() -> None:
+    ignore = merge_ignore_list([], ModelArch.KIMI_LINEAR)
+    assert "re:.*(block_sparse_moe|mlp)\\.gate$" in ignore
+    assert "re:.*(block_sparse_moe|mlp)\\.shared_experts" in ignore
+    assert "re:.*kv_a_proj_with_mqa$" in ignore
+
+
 def test_compile_injects_arch_snapshot(tmp_path) -> None:
     from tests.paths import QWEN25_EXAMPLE
     from tests.recipe_materialize import materialize_recipe
