@@ -184,6 +184,7 @@ calib:
 | `llama3_fp8_then_gptq.yaml` | 两阶段 FP8 → GPTQ W4 |
 | `moe_int4.yaml` | MoE 校准样本放大示例 |
 | `qwen_observer_smoke.yaml` | Observer 冒烟 |
+| `kimi-linear-48b.yaml` | Kimi Linear 48B；`fp8_dynamic` / `fp8_static`  `transformers_version: 4.57.1`|
 
 字段说明：[templates/README.md](luban_sculpt/templates/README.md)、[recipes/README.md](luban_sculpt/recipes/README.md)。
 
