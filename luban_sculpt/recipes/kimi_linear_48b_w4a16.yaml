@@ -1,0 +1,65 @@
+#
+#luban-sculpt compress \
+#  --profile nvidia_h20 \
+# --recipe luban_sculpt/recipes/kimi_linear_48b_w4a16.yaml \
+#  --model-dir ./Kimi-Linear-48B-A3B-Instruct \
+#  --precision w4a16 \
+#  --output ./current_output/kimi-w4a16
+#
+
+
+extends: quant
+
+model:
+  path: /data/Kimi-Linear-48B-A3B-Instruct
+  arch: kimi_linear
+  layout: hf_pretrained
+
+pipeline:
+  stages:
+    - name: kimi_w4a16
+      backend: llm_compressor
+      precision: w4a16
+
+      # 仅用于这个 Kimi recipe，参考社区配方的量化范围。
+      # Luban 还会合并 Kimi 架构自带的 ignore。
+      ignore:
+        - 're:.*lm_head'
+        - 're:.*embed_tokens'
+        - 're:.*layers[.]0[.].*'
+        - 're:.*input_layernorm$'
+        - 're:.*norm.*'
+        - 're:.*shared_experts.*'
+        - 're:.*block_sparse_moe[.]gate$'
+        - 're:.*router.*'
+        - 're:.*post_attention_layernorm$'
+        - 're:.*self_attn.*'
+
+      compress:
+        algorithm: gptq
+        scheme: W4A16
+        targets: [Linear]
+        trust_remote_code: true
+        device_map: auto
+        torch_dtype: bfloat16
+
+        block_size: 128
+        dampening_frac: 0.01
+        actorder: static
+        offload_hessians: true
+
+        quantization_format: pack-quantized
+        pipeline: sequential
+
+        observer:
+          weights: minmax
+
+calib:
+  source: perfectblend
+  max_samples: 32
+  batch_size: 1
+  max_seq_length: 512
+  shuffle: true
+  seed: 42
+  distributed: false
+  world_size: 1

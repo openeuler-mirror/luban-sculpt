@@ -17,6 +17,7 @@
 # 不必改本文件：
 #   ... --model-dir /path/to/Kimi-Linear-48B-A3B-Instruct
 #
+#感觉可以删掉下面那一句
 # 说明：48B 权重 bf16 ≈ 90+GB，单卡 H20 放不下，需多卡可见（device_map=auto 分片）。GPU内存不够，且只有单卡，可以device_map=cpu
 #
 extends: quant
@@ -30,15 +31,16 @@ pipeline:
   stages:
     - compress:
         trust_remote_code: true
-        device_map: cpu
+        device_map: auto
         observer:
           weights: luban_ema_absmax
           input: minmax
 
+
 calib:
   source: perfectblend
-  max_samples: 128        # kimi_linear 策略 calib_samples_factor=2.0 → 实际 256
+  max_samples: 32     
   batch_size: 1
   max_seq_length: 512
-  distributed: false
+  distributed: false       
   world_size: 1
