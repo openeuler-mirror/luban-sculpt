@@ -1,0 +1,52 @@
+#
+#luban-sculpt compress \
+#  --profile nvidia_h20 \
+# --recipe luban_sculpt/recipes/kimi_linear_48b_fp8_static.yaml \
+#  --model-dir ./Kimi-Linear-48B-A3B-Instruct \
+#  --precision fp8_static \
+#  --output ./current_output/kimi_fp8_static
+#
+
+extends: quant
+
+model:
+  path: /data/Kimi-Linear-48B-A3B-Instruct
+  arch: kimi_linear
+  layout: hf_pretrained
+
+pipeline:
+  stages:
+    - name: kimi_fp8_static
+      backend: llm_compressor
+      precision: fp8_static
+
+      ignore:
+        - 're:.*lm_head'
+        - 're:.*embed_tokens'
+        - 're:.*layers[.]0[.].*'
+        - 're:.*input_layernorm$'
+        - 're:.*norm.*'
+        - 're:.*shared_experts.*'
+        - 're:.*block_sparse_moe[.]gate$'
+        - 're:.*router.*'
+        - 're:.*post_attention_layernorm$'
+        - 're:.*self_attn.*'
+      compress:
+        algorithm: quantization
+        scheme: FP8
+        targets: [Linear]
+
+        trust_remote_code: true
+        device_map: auto
+        torch_dtype: bfloat16
+        pipeline: sequential
+
+calib:
+  source: perfectblend
+  max_samples: 32
+  batch_size: 1
+  max_seq_length: 512
+  shuffle: true
+  seed: 42
+  distributed: false
+  world_size: 1
